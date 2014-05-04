@@ -1,0 +1,168 @@
+#######
+# Cloudify Blueprint which describes a virtual machine with a simple Python
+# HTTP server running on it.
+#
+
+
+# The following import contains nodes implementation details
+imports:
+    - cloudify.types
+    - cloudify.bash
+    - cloudify.openstack
+
+# Python web server plugin definition with a specification to run in an agent vm.
+# Plugin will be downloaded and installed from the provided url.
+# Exoscale VM hosts provisioner plugin will be provided according to the plugin
+# folder name under '<BLUEPRINT>/plugins'. 
+plugins:
+    nodecellar_config_plugin:
+        derived_from: cloudify.plugins.agent_plugin
+        properties:
+            folder: nodecellar-config-plugin
+types:
+    vm_host:
+        derived_from: cloudify.openstack.server     
+        properties:
+            -   install_agent: true            
+            -   worker_config:
+                    user: ubuntu 
+                    port: 22
+                    # example for ssh key file (see `key_name` below) 
+                    # this file matches the agent key configured during the bootstrap
+                    # key: ~/.ssh/cloudify-agents-kp.pem 
+                # Uncomment and update `management_network_name` when working a n neutron enabled openstack
+            -   management_network_name: cloudify-manager-network 
+            -   server:
+
+                ### if defined, will serve as the hostname for the started instance,
+                ### otherwise, the node_id will be used
+                 #name: no_name            ### HOST_NAME""
+                    image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
+                    flavor:     101 ### FLAVOR_NAME
+                    #key_name:   cloudify-agents-kp ### KEY_NAME
+
+       
+
+    mongo_database:
+        derived_from: cloudify.types.bash.db_server
+        properties:
+            -   role
+            -   port
+
+    nodejs_server:
+        derived_from: cloudify.types.bash.app_server
+
+    nodejs_app:
+        derived_from: cloudify.types.bash.app_module
+        properties:
+            -   app_name
+            -   startup_script
+            -   git_url
+            -   git_branch
+            -   base_port
+            -   num_instances
+            -   env_file_path
+
+relationships:
+    nodecellar_connected_to_mongo:
+        derived_from: cloudify.relationships.connected_to
+        source_interfaces:
+            cloudify.interfaces.relationship_lifecycle:
+                - postconfigure: nodecellar_config_plugin.tasks.get_mongo_host_and_port
+#        properties:
+#            - env_file_path
+
+
+# The blueprint contains two nodes, a vm and a web server hosted in it.
+blueprint:
+    name: nodecellar
+    nodes:
+    - name: neutron_network
+      properties:
+         network: {name: app_network}
+      type: cloudify.openstack.network
+    - name: neutron_subnet
+      properties:
+        subnet: {cidr: 10.10.10.0/24, ip_version: 4, name: app_subnet}
+      relationships:
+      - {target: neutron_network, type: cloudify.relationships.contained_in}
+      type: cloudify.openstack.subnet
+    - name: neutron_port1
+      properties:
+        port: {name: neutron_app_port1}
+      relationships:
+      - {target: neutron_network, type: cloudify.relationships.contained_in}
+      - {target: neutron_subnet, type: cloudify.relationships.depends_on}
+      type: cloudify.openstack.port
+    - name: neutron_port2
+      properties:
+        port: {name: neutron_app_port2}
+      relationships:
+      - {target: neutron_network, type: cloudify.relationships.contained_in}
+      - {target: neutron_subnet, type: cloudify.relationships.depends_on}
+      type: cloudify.openstack.port
+
+    - name: floatingip
+      properties:
+        floatingip: {floating_network_name: Ext-Net}
+      type: cloudify.openstack.floatingip
+
+    - name: mongod_vm
+      type: vm_host
+      instances:
+          deploy: 1
+      relationships:
+      - {target: neutron_port1, type: cloudify.relationships.connected_to}
+
+    - name: nodejs_vm
+      type: vm_host
+      instances:
+          deploy: 1
+      relationships:
+      - {target: neutron_port2, type: cloudify.relationships.connected_to}
+      - {target: floatingip, type: cloudify.openstack.server_connected_to_floating_ip}
+
+        
+    - name: mongod
+      type: mongo_database
+      properties:
+            role: mongod
+            port: 27017
+            scripts:            
+                create: mongo-scripts/install-mongo.sh
+                start: mongo-scripts/start-mongo.sh
+                stop: mongo-scripts/stop-mongo.sh
+      relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_vm
+
+    - name: nodejs
+      type: nodejs_server
+      properties:
+            scripts:            
+                create: nodejs-scripts/install-nodejs.sh
+      relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_vm
+
+    - name: nodecellar_app
+      type: nodejs_app
+      properties:
+            app_name: nodecellar
+            startup_script: server.js
+            git_url: https://github.com/uric/nodecellar.git
+            git_branch: master 
+            base_port: 8080
+            num_instances: 1
+            env_file_path: /tmp/mongo_host_and_port.sh
+            scripts:            
+                create: nodejs-scripts/install-app.sh
+                start: nodejs-scripts/start-app.sh
+                stop: nodejs-scripts/stop-app.sh
+      relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs
+      - type: nodecellar_connected_to_mongo 
+        target: mongod
+                
+
