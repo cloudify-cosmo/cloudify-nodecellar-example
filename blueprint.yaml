@@ -21,7 +21,7 @@ plugins:
             folder: nodecellar-config-plugin
 types:
     vm_host:
-        derived_from: cloudify.openstack.server     
+        derived_from: cloudify.openstack.server
         properties:
             -   install_agent: true            
             -   worker_config:
@@ -29,9 +29,9 @@ types:
                     port: 22
                     # example for ssh key file (see `key_name` below) 
                     # this file matches the agent key configured during the bootstrap
-                    # key: ~/.ssh/cloudify-agents-kp.pem 
+                    key: ~/.ssh/cloudify-agents-kp.pem 
                 # Uncomment and update `management_network_name` when working a n neutron enabled openstack
-            -   management_network_name: cloudify-manager-network 
+            -   management_network_name: cloudify-admin-network
             -   server:
 
                 ### if defined, will serve as the hostname for the started instance,
@@ -39,7 +39,7 @@ types:
                  #name: no_name            ### HOST_NAME""
                     image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
                     flavor:     101 ### FLAVOR_NAME
-                    #key_name:   cloudify-agents-kp ### KEY_NAME
+                    key_name:   cloudify-agents-kp ### KEY_NAME
 
        
 
@@ -69,8 +69,6 @@ relationships:
         source_interfaces:
             cloudify.interfaces.relationship_lifecycle:
                 - postconfigure: nodecellar_config_plugin.tasks.get_mongo_host_and_port
-#        properties:
-#            - env_file_path
 
 
 # The blueprint contains two nodes, a vm and a web server hosted in it.
@@ -78,50 +76,67 @@ blueprint:
     name: nodecellar
     nodes:
     - name: neutron_network
-      properties:
-         network: {name: app_network}
       type: cloudify.openstack.network
+      properties:
+        network: 
+          name: app_network
+
     - name: neutron_subnet
-      properties:
-        subnet: {cidr: 10.10.10.0/24, ip_version: 4, name: app_subnet}
-      relationships:
-      - {target: neutron_network, type: cloudify.relationships.contained_in}
       type: cloudify.openstack.subnet
+      properties:
+        subnet: 
+          cidr: 10.10.10.0/24
+          ip_version: 4
+          name: app_subnet
+      relationships:
+        - target: neutron_network
+          type: cloudify.relationships.contained_in
+      
     - name: neutron_port1
-      properties:
-        port: {name: neutron_app_port1}
-      relationships:
-      - {target: neutron_network, type: cloudify.relationships.contained_in}
-      - {target: neutron_subnet, type: cloudify.relationships.depends_on}
       type: cloudify.openstack.port
+      properties:
+        port: 
+          name: neutron_app_port1
+      relationships:
+        - target: neutron_network 
+          type: cloudify.relationships.contained_in
+        - target: neutron_subnet
+          type: cloudify.relationships.depends_on
+      
     - name: neutron_port2
-      properties:
-        port: {name: neutron_app_port2}
-      relationships:
-      - {target: neutron_network, type: cloudify.relationships.contained_in}
-      - {target: neutron_subnet, type: cloudify.relationships.depends_on}
       type: cloudify.openstack.port
+      properties:
+        port:
+          name: neutron_app_port2
+      relationships:
+        - target: neutron_network 
+          type: cloudify.relationships.contained_in
+        - target: neutron_subnet 
+          type: cloudify.relationships.depends_on
 
     - name: floatingip
+      type: cloudify.openstack.floatingip    
       properties:
-        floatingip: {floating_network_name: Ext-Net}
-      type: cloudify.openstack.floatingip
+        floatingip:
+          floating_network_name: Ext-Net
 
     - name: mongod_vm
       type: vm_host
       instances:
           deploy: 1
       relationships:
-      - {target: neutron_port1, type: cloudify.relationships.connected_to}
+        - target: neutron_port1
+          type: cloudify.relationships.connected_to
 
     - name: nodejs_vm
       type: vm_host
       instances:
           deploy: 1
       relationships:
-      - {target: neutron_port2, type: cloudify.relationships.connected_to}
-      - {target: floatingip, type: cloudify.openstack.server_connected_to_floating_ip}
-
+        - target: neutron_port2 
+          type: cloudify.relationships.connected_to
+        - target: floatingip
+          type: cloudify.openstack.server_connected_to_floating_ip
         
     - name: mongod
       type: mongo_database
@@ -133,8 +148,8 @@ blueprint:
                 start: mongo-scripts/start-mongo.sh
                 stop: mongo-scripts/stop-mongo.sh
       relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_vm
+        - target: mongod_vm
+          type: cloudify.relationships.contained_in
 
     - name: nodejs
       type: nodejs_server
@@ -142,8 +157,8 @@ blueprint:
             scripts:            
                 create: nodejs-scripts/install-nodejs.sh
       relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_vm
+        - type: cloudify.relationships.contained_in
+          target: nodejs_vm
 
     - name: nodecellar_app
       type: nodejs_app
@@ -160,9 +175,8 @@ blueprint:
                 start: nodejs-scripts/start-app.sh
                 stop: nodejs-scripts/stop-app.sh
       relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs
-      - type: nodecellar_connected_to_mongo 
-        target: mongod
-                
+        - type: cloudify.relationships.contained_in
+          target: nodejs
+        - type: nodecellar_connected_to_mongo 
+          target: mongod      
 
