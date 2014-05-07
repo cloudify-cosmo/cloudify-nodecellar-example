@@ -40,8 +40,7 @@ types:
                     image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
                     flavor:     101 ### FLAVOR_NAME
                     key_name:   cloudify-agents-kp ### KEY_NAME
-
-       
+                    security_groups: ['cloudify-sg-agents', 'node_cellar_security_group']
 
     mongo_database:
         derived_from: cloudify.types.bash.db_server
@@ -91,7 +90,7 @@ blueprint:
       relationships:
         - target: neutron_network
           type: cloudify.relationships.contained_in
-      
+
     - name: neutron_port1
       type: cloudify.openstack.port
       properties:
@@ -102,7 +101,20 @@ blueprint:
           type: cloudify.relationships.contained_in
         - target: neutron_subnet
           type: cloudify.relationships.depends_on
-      
+
+    - name: node_cellar_security_group
+      type: cloudify.openstack.security_group
+      properties:
+        security_group:
+          name: node_cellar_security_group
+        rules:
+          - remote_ip_prefix: 0.0.0.0/0
+            port: 8080
+          - remote_ip_prefix: 0.0.0.0/0
+            port: 27017
+          - remote_ip_prefix: 0.0.0.0/0
+            port: 28017
+
     - name: neutron_port2
       type: cloudify.openstack.port
       properties:
@@ -127,6 +139,8 @@ blueprint:
       relationships:
         - target: neutron_port1
           type: cloudify.relationships.connected_to
+        - target: node_cellar_security_group
+          type: cloudify.relationships.depends_on
 
     - name: nodejs_vm
       type: vm_host
@@ -137,7 +151,9 @@ blueprint:
           type: cloudify.relationships.connected_to
         - target: floatingip
           type: cloudify.openstack.server_connected_to_floating_ip
-        
+        - target: node_cellar_security_group
+          type: cloudify.relationships.depends_on
+
     - name: mongod
       type: mongo_database
       properties:
