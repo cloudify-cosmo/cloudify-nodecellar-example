@@ -37,8 +37,8 @@ types:
                 ### if defined, will serve as the hostname for the started instance,
                 ### otherwise, the node_id will be used
                  #name: no_name            ### HOST_NAME""
-                    image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
-                    flavor:     101 ### FLAVOR_NAME
+                    # image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
+                    # flavor:     101 ### FLAVOR_NAME
                     key_name:   cloudify-agents-kp ### KEY_NAME
                     security_groups: ['cloudify-sg-agents', 'node_cellar_security_group']
 
