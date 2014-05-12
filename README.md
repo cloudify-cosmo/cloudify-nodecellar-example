@@ -6,12 +6,14 @@ The sample nodejs application used here is the [nodecellar](http://coenraets.org
 ## Before You Begin 
 
 Before you can deploy this application using Cloudify, you'll need to have the following setup in your environment: 
+* Linux or Mac OSX. For Linux, the Cloudify CLI has been tested with Ubuntu 13.04 or higher, and Arch Linux (but should work just as well on other Linux distros). For Mac it's been tested with OSX mavericks. Windows support will be added in the near future. 
 * An OpenStack cloud environment and credentials. Cloudify defaults to [HP Cloud](http://www.hpcloud.com/) endpoint URLs, so the easiest would be to [setup an account with HP Helion Cloud](https://horizon.hpcloud.com/). 
 * Python 2.7 or higher installed
+* `python-dev` installed. In Ubuntu you can use `apt-get install python-dev`, for Mac you can use homebrew or macports. 
 * Pip (Python package manager) 1.5 or higher installed 
-* Linux or Mac OSX. For Linux, the Cloudify CLI has been tested with Ubuntu 13.04 or higher, and Arch Linux (but should work just as well on other Linux distros). For Mac it's been tested with OSX mavericks. Windows support will be added in the near future. 
 
 ## Step 1: Install the Cloudify CLI
+
 The first thing you'll need to do is install the Cloudify CLI, which will let you upload blueprints, create deployments from them and execute workflows on these deployments. This is quite simple once you have Python and pip installed. It is recommended to install the CLI in a new python [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/). That will make it easier to upgrade and remove, and will also save you the need to you use `sudo` with the installation. To install the CLI follow the following steps: 
 * If you're using a python `virtualenv`, activate it. 
 
@@ -23,7 +25,7 @@ source bin/activate
 * Type the following command: 
 
 ```
-pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/develop.zip --process-dependency-links
+pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/3.0.zip --process-dependency-links
 ```
 
 The `--process-dependency-links` flag is not required if you're using pip versions older than 1.5.  
@@ -35,7 +37,7 @@ After the installation completes, you will have `cfy` command installed. Type `c
 Next, you need to install the Cloudify OpenStack provider. The provider allows the CLI to initialize an OpenStack Havana configuration and bootstrap a Cloudify manager on an OpenStack Havana cloud (we used [HP Helion Cloud](https://www.hpcloud.com/) for this example). The bootstrap process creates a network called `cloudify_admin_network` and subnet under it, two keypaiers (named `cloudify-agents-kp` and `cloudify-management-kp`), two security groups (named `cloudify-sg-agents` and `cloudify-sg-management`), starts a management VM on the OpenStack cloud, and installs the Cloudify management components on it. These include (among other things) an Nginx proxy, a nodejs server for the Cloudify Web UI, an Flask API server, a Ruby based workflow engine, ElasticSearch and Logstash for log aggregation and runtime state, RabbitMQ for messaging, and a Python Celery worker for processing tasks that are created when triggering workflows. But from a user's perspective, all it takes to bootstrap a manager is a few simple steps. To install the OpenStack provider, type the following command in your CLI:
 
 ```
-pip install https://github.com/cloudify-cosmo/cloudify-openstack-provider/archive/develop.zip --process-dependency-links
+pip install https://github.com/cloudify-cosmo/cloudify-openstack-provider/archive/1.0.zip --process-dependency-links
 ```
 
 Note for Mac users: One of the libraries that's installed with the OpenStacl providers (`pycrypto`) may fail to compile. This seems to be a [known issue](http://stackoverflow.com/questions/19617686/trying-to-install-pycrypto-on-mac-osx-mavericks/22868650#22868650). To solve it, type the following command in your terminal windows and try the installation again: 
