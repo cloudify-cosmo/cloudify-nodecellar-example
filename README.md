@@ -6,13 +6,13 @@ The sample nodejs application used here is the [nodecellar](http://coenraets.org
 ## Before You Begin 
 
 Before you can deploy this application using Cloudify, you'll need to have the following setup in your environment: 
-* An OpenStack cloud environment and credentials. Cloudify defaults to [HP Cloud](http://www.hpcloud.com/) endpoint URLs, so the easiest would be to [setup an account with HP Cloud](todo). 
+* An OpenStack cloud environment and credentials. Cloudify defaults to [HP Cloud](http://www.hpcloud.com/) endpoint URLs, so the easiest would be to [setup an account with HP Helion Cloud](https://horizon.hpcloud.com/). 
 * Python 2.7 or higher installed
 * Pip (Python package manager) 1.5 or higher installed 
 * Linux or Mac OSX. For Linux, the Cloudify CLI has been tested with Ubuntu 13.04 or higher, and Arch Linux (but should work just as well on other Linux distros). For Mac it's been tested with OSX mavericks. Windows support will be added in the near future. 
 
 ## Step 1: Install the Cloudify CLI
-The first thing you'll need to do is install the Cloudify CLI, which will let you upload blueprints, create deployments from them and execute workflows on these deployments. This is quite simple once you have Python and pip installed. It is recommended to install the CLI in a new python [virtual environment](todo). That will make it easier to upgrade and remove, and will also save you the need to you use `sudo` with the installation. To install the CLI follow the following steps: 
+The first thing you'll need to do is install the Cloudify CLI, which will let you upload blueprints, create deployments from them and execute workflows on these deployments. This is quite simple once you have Python and pip installed. It is recommended to install the CLI in a new python [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/). That will make it easier to upgrade and remove, and will also save you the need to you use `sudo` with the installation. To install the CLI follow the following steps: 
 * If you're using a python `virtualenv`, activate it. 
 
 ```
@@ -32,13 +32,13 @@ After the installation completes, you will have `cfy` command installed. Type `c
 
 ## Step 2: Install the Cloudify OpenStack Provider 
 
-Next, you need to install the Cloudify OpenStack provider. The provider allows the CLI to initialize an OpenStack Havana configuration and bootstrap a Cloudify manager on an OpenStack Havana cloud (we used [HPCloud](todo) for this example). The bootstrap process creates two networks (todo:names), two keypaiers (todo:names), two security groups (todo:names), starts a management VM on the OpenStack cloud, and installs the Cloudify management components on it. These include (among other things) an [Nginx](todo) proxy, a [nodejs](todo) server for the Cloudify Web UI, an Flask API server, a Ruby based workflow engine, [ElasticSearch](todo) for log aggregation and runtime state, [RabbitMQ](todo) for messages, and a [Celery](todo) worker for processing tasks that are created when triggering workflows. But from a user's perspective, all it takes to bootstrap a manager is a few simple steps. To install the OpenStack provider, type the following command in your CLI:
+Next, you need to install the Cloudify OpenStack provider. The provider allows the CLI to initialize an OpenStack Havana configuration and bootstrap a Cloudify manager on an OpenStack Havana cloud (we used [HP Helion Cloud](https://www.hpcloud.com/) for this example). The bootstrap process creates a network called `cloudify_admin_network` and subnet under it, two keypaiers (named `cloudify-agents-kp` and `cloudify-management-kp`), two security groups (named `cloudify-sg-agents` and `cloudify-sg-management`), starts a management VM on the OpenStack cloud, and installs the Cloudify management components on it. These include (among other things) an Nginx proxy, a nodejs server for the Cloudify Web UI, an Flask API server, a Ruby based workflow engine, ElasticSearch and Logstash for log aggregation and runtime state, RabbitMQ for messaging, and a Python Celery worker for processing tasks that are created when triggering workflows. But from a user's perspective, all it takes to bootstrap a manager is a few simple steps. To install the OpenStack provider, type the following command in your CLI:
 
 ```
 pip install https://github.com/cloudify-cosmo/cloudify-openstack/archive/develop.zip --process-dependency-links
 ```
 
-Note for Mac users: One of the libraries that's installed with the OpenStacl providers (`pycrypto`) may fail to compile. This seems to be a [known issue](todo). To solve it, type the following command in your terminal windows and try the installation again: 
+Note for Mac users: One of the libraries that's installed with the OpenStacl providers (`pycrypto`) may fail to compile. This seems to be a [known issue](http://stackoverflow.com/questions/19617686/trying-to-install-pycrypto-on-mac-osx-mavericks/22868650#22868650). To solve it, type the following command in your terminal windows and try the installation again: 
 
 ```
 export CFLAGS=-Qunused-arguments
@@ -162,11 +162,11 @@ cfy blueprints upload -b nodecellar blueprint.yaml
 
 The `-b` parameter is the unique name we've given to this blueprint on the Cloudify manager. A blueprint is a template of an application stack. Blueprints cannot be materialize on their own. For that you will need to create a deployment, which is essintially an instance of this blueprint (kind of like what an instance is to a class in an OO model). But first let's go back to the web UI and see what this blueprint looks like. Point your browser to the manager URL again, and refresh the screen. You will see the nodecellar blueprint listed there. 
 
-todo: image 
+![Blueprints table](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/blueprints_table.png)
 
 Click the row with the blueprint. You will now see the topology of this blueprint. A topology is consisted of elements called nodes. In our case, we have the following nodes: a network, a subnet, a security group, two VMs, a nodejs server, a mongodb server, and a nodejs application called nodecellar (which is a nice sample nodejs application backed by mongodb). 
 
-todo: image
+![Nodecellar Blueprint](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/blueprint.png)
 
 Next, we need to cretae a deployment so we can create this topology in our OpenStack cloud. To do so, type the following command: 
 
@@ -178,7 +178,7 @@ With this command we've created a deployment named `nodecellar` from a blueprint
 
 ## Step 6: Install the Deployment 
 
-In Cloudify, every thing that is executed for a certain deployment is done in the context of a workflow. A workflow is essentially a set of steps, executed by Cloudify agents (which are essentially [Celery](todo) workers). So whenever a workflow is triggered, it sends a set of tasks to the Cloudify agents, which then execute them and report back the results. For example, the `install` workflows which we're going to trigger, will send tasks to create the various OpenStack resources, and then install and start the application components on them. By default, the Cloudify manager will create one agent per deployment, on the management VM. When application VMs are created by the default `install` workflow (in our case there's two of them), this workflow also installs an agent on each of these VMs, and subsequent tasks to configure these VMs and install application componets are executed by these agents. 
+In Cloudify, every thing that is executed for a certain deployment is done in the context of a workflow. A workflow is essentially a set of steps, executed by Cloudify agents (which are essentially Celery workers). So whenever a workflow is triggered, it sends a set of tasks to the Cloudify agents, which then execute them and report back the results. For example, the `install` workflows which we're going to trigger, will send tasks to create the various OpenStack resources, and then install and start the application components on them. By default, the Cloudify manager will create one agent per deployment, on the management VM. When application VMs are created by the default `install` workflow (in our case there's two of them), this workflow also installs an agent on each of these VMs, and subsequent tasks to configure these VMs and install application componets are executed by these agents. 
 To trigger the `install` workflow, type the following command in your terminal: 
 
 ```
@@ -193,13 +193,13 @@ These will take a couple of minutes, during which the OpenStack resources and VM
 
 You can also view the events in the deployment screen in the web UI. 
 
-todo: pic
+![Events](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/events.png)
 
 ## Step 7: Test Drive the Application 
 
-To test the application, you will need to access it using its public IP address. Locate the VM that runs the nodejs server in your OpenStack dashboard, and use port 8080 to access it from your web browser. You should see the nodecellar application. Click the "Browse wines" button to verufy that the application was installed suceesfully and can access the mongodb database to read the list of wines. 
+To test the application, you will need to access it using its public IP address. Locate the VM that runs the nodejs server in your OpenStack dashboard, and use port 8080 to access it from your web browser. You should see the nodecellar application. Click the "Browse wines" button to verify that the application was installed suceesfully and can access the mongodb database to read the list of wines. 
 
-todo: pic 
+![Nodecellar](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/nodecellar.png)
 
 ## Step 8: Uninstall and Delete the Deployment 
 
