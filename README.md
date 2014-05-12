@@ -203,7 +203,7 @@ To test the application, you will need to access it using its public IP address.
 
 ![Nodecellar](https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/nodecellar.png)
 
-## Step 8: Uninstall and Delete the Deployment 
+## Step 8: Uninstall the Deployment 
 
 Uninstalling the deployment is just a matter of running another workflow, which will teardown all the resources that were provisionined by the `install` workflow. To run the uninstallation workflow, type the following command: 
 
