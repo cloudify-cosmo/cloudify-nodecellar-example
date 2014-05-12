@@ -162,11 +162,11 @@ cfy blueprints upload -b nodecellar blueprint.yaml
 
 The `-b` parameter is the unique name we've given to this blueprint on the Cloudify manager. A blueprint is a template of an application stack. Blueprints cannot be materialize on their own. For that you will need to create a deployment, which is essintially an instance of this blueprint (kind of like what an instance is to a class in an OO model). But first let's go back to the web UI and see what this blueprint looks like. Point your browser to the manager URL again, and refresh the screen. You will see the nodecellar blueprint listed there. 
 
-![Blueprints table](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/blueprints_table.png)
+![Blueprints table](https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/blueprints_table.png)
 
 Click the row with the blueprint. You will now see the topology of this blueprint. A topology is consisted of elements called nodes. In our case, we have the following nodes: a network, a subnet, a security group, two VMs, a nodejs server, a mongodb server, and a nodejs application called nodecellar (which is a nice sample nodejs application backed by mongodb). 
 
-![Nodecellar Blueprint](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/blueprint.png)
+![Nodecellar Blueprint](https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/blueprint.png)
 
 Next, we need to cretae a deployment so we can create this topology in our OpenStack cloud. To do so, type the following command: 
 
@@ -193,13 +193,13 @@ These will take a couple of minutes, during which the OpenStack resources and VM
 
 You can also view the events in the deployment screen in the web UI. 
 
-![Events](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/events.png)
+![Events](https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/events.png)
 
 ## Step 7: Test Drive the Application 
 
 To test the application, you will need to access it using its public IP address. Locate the VM that runs the nodejs server in your OpenStack dashboard, and use port 8080 to access it from your web browser. You should see the nodecellar application. Click the "Browse wines" button to verify that the application was installed suceesfully and can access the mongodb database to read the list of wines. 
 
-![Nodecellar](https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack/blob/master/nodecellar.png)
+![Nodecellar](https://raw.githubusercontent.com/cloudify-cosmo/cloudify-nodecellar-openstack/master/nodecellar.png)
 
 ## Step 8: Uninstall and Delete the Deployment 
 
