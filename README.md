@@ -218,7 +218,7 @@ Similarly to the `install` workflow, you can track the progress of the uninstall
 Next, you can also teardown the manager if you have no use for it anymore. This can be done by issuing the following command:
 
 ```
-cfy teardown
+cfy teardown -f --ignore-deployments
 ```
 
 This will terminate the manager VM and delete the resources associated with it. 
