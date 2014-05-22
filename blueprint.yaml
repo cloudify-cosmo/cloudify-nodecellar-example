@@ -91,17 +91,6 @@ blueprint:
         - target: neutron_network
           type: cloudify.relationships.contained_in
 
-    - name: neutron_port1
-      type: cloudify.openstack.port
-      properties:
-        port: 
-          name: neutron_app_port1
-      relationships:
-        - target: neutron_network 
-          type: cloudify.relationships.contained_in
-        - target: neutron_subnet
-          type: cloudify.relationships.depends_on
-
     - name: node_cellar_security_group
       type: cloudify.openstack.security_group
       properties:
@@ -115,17 +104,6 @@ blueprint:
           - remote_ip_prefix: 0.0.0.0/0
             port: 28017
 
-    - name: neutron_port2
-      type: cloudify.openstack.port
-      properties:
-        port:
-          name: neutron_app_port2
-      relationships:
-        - target: neutron_network 
-          type: cloudify.relationships.contained_in
-        - target: neutron_subnet 
-          type: cloudify.relationships.depends_on
-
     - name: floatingip
       type: cloudify.openstack.floatingip    
       properties:
@@ -137,8 +115,10 @@ blueprint:
       instances:
           deploy: 1
       relationships:
-        - target: neutron_port1
+        - target: neutron_network
           type: cloudify.relationships.connected_to
+        - target: neutron_subnet
+          type: cloudify.relationships.depends_on
         - target: node_cellar_security_group
           type: cloudify.relationships.depends_on
 
@@ -147,8 +127,10 @@ blueprint:
       instances:
           deploy: 1
       relationships:
-        - target: neutron_port2 
+        - target: neutron_network 
           type: cloudify.relationships.connected_to
+        - target: neutron_subnet
+          type: cloudify.relationships.depends_on
         - target: floatingip
           type: cloudify.openstack.server_connected_to_floating_ip
         - target: node_cellar_security_group
