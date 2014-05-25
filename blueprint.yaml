@@ -1,19 +1,9 @@
-#######
-# Cloudify Blueprint which describes a virtual machine with a simple Python
-# HTTP server running on it.
-#
-
-
 # The following import contains nodes implementation details
 imports:
     - cloudify.types
     - cloudify.bash
     - cloudify.openstack
 
-# Python web server plugin definition with a specification to run in an agent vm.
-# Plugin will be downloaded and installed from the provided url.
-# Exoscale VM hosts provisioner plugin will be provided according to the plugin
-# folder name under '<BLUEPRINT>/plugins'. 
 plugins:
     nodecellar_config_plugin:
         derived_from: cloudify.plugins.agent_plugin
