@@ -24,7 +24,7 @@ types:
         derived_from: cloudify.openstack.server
         properties:
             -   install_agent: true            
-            -   worker_config:
+            -   cloudify_agent:
                     user: ubuntu 
                     port: 22
                     # example for ssh key file (see `key_name` below) 
