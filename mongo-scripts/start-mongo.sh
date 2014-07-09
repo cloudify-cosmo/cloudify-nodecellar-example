@@ -48,23 +48,21 @@ fi
 
 info "Getting latest state version of current node ${CLOUDIFY_NODE_ID} from cloudify manager at ${CLOUDIFY_MANAGER_IP}"
 
-NODE_STATE=`curl -s -X GET "http://${CLOUDIFY_MANAGER_IP}:8100/nodes/${CLOUDIFY_NODE_ID}?runtime=true"`
+NODE_STATE=`curl -s -X GET "http://${CLOUDIFY_MANAGER_IP}:80/node-instances/${CLOUDIFY_NODE_ID}"`
 info "Node state is ${NODE_STATE}"
 
 VERSION=`echo ${NODE_STATE} | ./jq  '.stateVersion'`
 info "version is ${VERSION}"
 
 IP_ADDR=$(ip addr | grep inet | grep eth0 | awk -F" " '{print $2}'| sed -e 's/\/.*$//')
-info "About to post IP adress ${IP_ADDR} and port ${port}"
+info "About to post IP address ${IP_ADDR} and port ${port}"
 
-RUNTIME_INFO="{\"runtime_info\": {\"ip_address\": \"${IP_ADDR}\", \"port\":\"${port}\"}, \"state_version\": ${VERSION}}"
-URL="http://${CLOUDIFY_MANAGER_IP}:8100/nodes/${CLOUDIFY_NODE_ID}"
+RUNTIME_PROPERTIES="{\"runtime_properties\": {\"ip_address\": \"${IP_ADDR}\", \"port\":\"${port}\"}, \"version\": ${VERSION}}"
+URL="http://${CLOUDIFY_MANAGER_IP}:80/node_instances/${CLOUDIFY_NODE_ID}"
 
-info "Runtime info: ${RUNTIME_INFO}"
+info "Runtime properties: ${RUNTIME_PROPERTIES}"
 info "Url: ${URL}"
 
-curl -X PATCH -H "Content-Type: application/json" -d "${RUNTIME_INFO}" ${URL}
+curl -X PATCH -H "Content-Type: application/json" -d "${RUNTIME_PROPERTIES}" ${URL}
 
 info "Successfully posted data to manager"
-
-
