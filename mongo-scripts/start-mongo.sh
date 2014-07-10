@@ -58,7 +58,7 @@ IP_ADDR=$(ip addr | grep inet | grep eth0 | awk -F" " '{print $2}'| sed -e 's/\/
 info "About to post IP address ${IP_ADDR} and port ${port}"
 
 RUNTIME_PROPERTIES="{\"runtime_properties\": {\"ip_address\": \"${IP_ADDR}\", \"port\":\"${port}\"}, \"version\": ${VERSION}}"
-URL="http://${CLOUDIFY_MANAGER_IP}:80/node_instances/${CLOUDIFY_NODE_ID}"
+URL="http://${CLOUDIFY_MANAGER_IP}:80/node-instances/${CLOUDIFY_NODE_ID}"
 
 info "Runtime properties: ${RUNTIME_PROPERTIES}"
 info "Url: ${URL}"
