@@ -1,19 +1,9 @@
-#######
-# Cloudify Blueprint which describes a virtual machine with a simple Python
-# HTTP server running on it.
-#
-
-
 # The following import contains nodes implementation details
 imports:
     - cloudify.types
     - cloudify.bash
     - cloudify.openstack
 
-# Python web server plugin definition with a specification to run in an agent vm.
-# Plugin will be downloaded and installed from the provided url.
-# Exoscale VM hosts provisioner plugin will be provided according to the plugin
-# folder name under '<BLUEPRINT>/plugins'. 
 plugins:
     nodecellar_config_plugin:
         derived_from: cloudify.plugins.agent_plugin
@@ -37,8 +27,8 @@ types:
                 ### if defined, will serve as the hostname for the started instance,
                 ### otherwise, the node_id will be used
                  #name: no_name            ### HOST_NAME""
-                    # image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
-                    # flavor:     101 ### FLAVOR_NAME
+                    image:      8672f4c6-e33d-46f5-b6d8-ebbeba12fa02 ### IMAGE_NAME
+                    flavor:     101 ### FLAVOR_NAME
                     key_name:   cloudify-agents-kp ### KEY_NAME
                     security_groups: ['cloudify-sg-agents', 'node_cellar_security_group']
 
@@ -91,17 +81,6 @@ blueprint:
         - target: neutron_network
           type: cloudify.relationships.contained_in
 
-    - name: neutron_port1
-      type: cloudify.openstack.port
-      properties:
-        port: 
-          name: neutron_app_port1
-      relationships:
-        - target: neutron_network 
-          type: cloudify.relationships.contained_in
-        - target: neutron_subnet
-          type: cloudify.relationships.depends_on
-
     - name: node_cellar_security_group
       type: cloudify.openstack.security_group
       properties:
@@ -115,17 +94,6 @@ blueprint:
           - remote_ip_prefix: 0.0.0.0/0
             port: 28017
 
-    - name: neutron_port2
-      type: cloudify.openstack.port
-      properties:
-        port:
-          name: neutron_app_port2
-      relationships:
-        - target: neutron_network 
-          type: cloudify.relationships.contained_in
-        - target: neutron_subnet 
-          type: cloudify.relationships.depends_on
-
     - name: floatingip
       type: cloudify.openstack.floatingip    
       properties:
@@ -137,8 +105,10 @@ blueprint:
       instances:
           deploy: 1
       relationships:
-        - target: neutron_port1
+        - target: neutron_network
           type: cloudify.relationships.connected_to
+        - target: neutron_subnet
+          type: cloudify.relationships.depends_on
         - target: node_cellar_security_group
           type: cloudify.relationships.depends_on
 
@@ -147,8 +117,10 @@ blueprint:
       instances:
           deploy: 1
       relationships:
-        - target: neutron_port2 
+        - target: neutron_network 
           type: cloudify.relationships.connected_to
+        - target: neutron_subnet
+          type: cloudify.relationships.depends_on
         - target: floatingip
           type: cloudify.openstack.server_connected_to_floating_ip
         - target: node_cellar_security_group
@@ -181,7 +153,7 @@ blueprint:
       properties:
             app_name: nodecellar
             startup_script: server.js
-            git_url: https://github.com/uric/nodecellar.git
+            git_url: https://github.com/cloudify-cosmo/nodecellar.git
             git_branch: master 
             base_port: 8080
             num_instances: 1
