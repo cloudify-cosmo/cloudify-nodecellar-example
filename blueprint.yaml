@@ -153,7 +153,7 @@ blueprint:
       properties:
             app_name: nodecellar
             startup_script: server.js
-            git_url: https://github.com/uric/nodecellar.git
+            git_url: https://github.com/cloudify-cosmo/nodecellar.git
             git_branch: master 
             base_port: 8080
             num_instances: 1
