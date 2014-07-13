@@ -21,7 +21,7 @@ info "Waiting for mongo to launch"
 
 STARTED=false
 REST_PORT=`expr ${port} + 1000`
-for i in $(seq 1 30)
+for i in $(seq 1 120)
 do
     if wget http://localhost:${REST_PORT} 2>/dev/null ; then
         info "Server is up."
@@ -33,7 +33,7 @@ do
     fi  
 done
 if [ ${STARTED} = false ]; then
-    error "Failed to start mongodb in 30 seconds."
+    error "Failed to start mongodb in 120 seconds."
     exit 1
 fi
 # Installing jq to parse json 
@@ -51,7 +51,7 @@ info "Getting latest state version of current node ${CLOUDIFY_NODE_ID} from clou
 NODE_STATE=`curl -s -X GET "http://${CLOUDIFY_MANAGER_IP}:80/node-instances/${CLOUDIFY_NODE_ID}"`
 info "Node state is ${NODE_STATE}"
 
-VERSION=`echo ${NODE_STATE} | ./jq  '.stateVersion'`
+VERSION=`echo ${NODE_STATE} | ./jq  '.version'`
 info "version is ${VERSION}"
 
 IP_ADDR=$(ip addr | grep inet | grep eth0 | awk -F" " '{print $2}'| sed -e 's/\/.*$//')
