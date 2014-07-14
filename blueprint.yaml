@@ -11,7 +11,6 @@ types:
     vm_host:
         derived_from: cloudify.openstack.server
         properties:
-            -   install_agent: true            
             -   cloudify_agent:
                     user: ubuntu 
             -   server:
@@ -21,7 +20,7 @@ types:
                     #name: no_name            ### HOST_NAME""
                     image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
                     flavor:     101 ### FLAVOR_NAME
-                    security_groups: ['cloudify-sg-agents', 'node_cellar_security_group']
+                    security_groups: ['node_cellar_security_group']
 
     mongo_database:
         derived_from: cloudify.types.bash.db_server
