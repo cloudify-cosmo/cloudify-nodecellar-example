@@ -1,8 +1,7 @@
 # The following import contains nodes implementation details
 imports:
-    - cloudify.types
-    - cloudify.bash
-    - cloudify.openstack
+    - http://www.getcloudify.org/spec/bash-plugin/1.0/plugin.yaml
+    - http://www.getcloudify.org/spec/openstack-plugin/1.0/plugin.yaml
 
 plugins:
     nodecellar_config_plugin:
