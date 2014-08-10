@@ -7,16 +7,17 @@ plugins:
         derived_from: cloudify.plugins.agent_plugin
         properties:
             folder: nodecellar-config-plugin
-types:
+node_types:
     vm_host:
         derived_from: cloudify.openstack.server
         properties:
-            -   cloudify_agent:
-                    user: ubuntu 
-            -   server:
-
-                ### if defined, will serve as the hostname for the started instance,
-                ### otherwise, the node_id will be used
+            cloudify_agent:
+                default:
+                    user: ubuntu
+            server:
+                default:
+                    ### if defined, will serve as the hostname for the started instance,
+                    ### otherwise, the node_id will be used
                     #name: no_name            ### HOST_NAME""
                     image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
                     flavor:     101 ### FLAVOR_NAME
@@ -25,8 +26,8 @@ types:
     mongo_database:
         derived_from: cloudify.types.bash.db_server
         properties:
-            -   role
-            -   port
+            role: {}
+            port: {}
 
     nodejs_server:
         derived_from: cloudify.types.bash.app_server
@@ -34,13 +35,13 @@ types:
     nodejs_app:
         derived_from: cloudify.types.bash.app_module
         properties:
-            -   app_name
-            -   startup_script
-            -   git_url
-            -   git_branch
-            -   base_port
-            -   num_instances
-            -   env_file_path
+            app_name: {}
+            startup_script: {}
+            git_url: {}
+            git_branch: {}
+            base_port: {}
+            num_instances: {}
+            env_file_path: {}
 
 relationships:
     nodecellar_connected_to_mongo:
@@ -50,11 +51,8 @@ relationships:
                 - postconfigure: nodecellar_config_plugin.tasks.get_mongo_host_and_port
 
 
-blueprint:
-    name: nodecellar
-    nodes:
-
-    - name: node_cellar_security_group
+node_templates:
+    node_cellar_security_group:
       type: cloudify.openstack.security_group
       properties:
         security_group:
@@ -67,13 +65,13 @@ blueprint:
           - remote_ip_prefix: 0.0.0.0/0
             port: 28017
 
-    - name: floatingip
+    floatingip:
       type: cloudify.openstack.floatingip    
       properties:
         floatingip:
           floating_network_name: Ext-Net
 
-    - name: mongod_vm
+    mongod_vm:
       type: vm_host
       instances:
           deploy: 1
@@ -81,7 +79,7 @@ blueprint:
         - target: node_cellar_security_group
           type: cloudify.relationships.depends_on
 
-    - name: nodejs_vm
+    nodejs_vm:
       type: vm_host
       instances:
           deploy: 1
@@ -91,7 +89,7 @@ blueprint:
         - target: node_cellar_security_group
           type: cloudify.relationships.depends_on
 
-    - name: mongod
+    mongod:
       type: mongo_database
       properties:
             role: mongod
@@ -104,7 +102,7 @@ blueprint:
         - target: mongod_vm
           type: cloudify.relationships.contained_in
 
-    - name: nodejs
+    nodejs:
       type: nodejs_server
       properties:
             scripts:            
@@ -113,7 +111,7 @@ blueprint:
         - type: cloudify.relationships.contained_in
           target: nodejs_vm
 
-    - name: nodecellar_app
+    nodecellar_app:
       type: nodejs_app
       properties:
             app_name: nodecellar
