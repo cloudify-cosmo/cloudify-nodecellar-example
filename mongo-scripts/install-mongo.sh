@@ -8,7 +8,7 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 #. ${CLOUDIFY_FILE_SERVER}
 
 TEMP_DIR="/tmp"
-MONGO_ROOT=${TEMP_DIR}/mongodb
+MONGO_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/mongodb
 MONGO_TARBALL=mongodb-linux-x86_64-2.4.9.tgz
 BLUEPRINT_PATH=blueprints/${CLOUDIFY_BLUEPRINT_ID}
 

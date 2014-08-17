@@ -8,6 +8,7 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 #. ${CLOUDIFY_FILE_SERVER}
 
 TEMP_DIR="/tmp"
+NODEJS_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/nodejs
 
 
 info "Changing directory to ${TEMP_DIR}"
@@ -38,7 +39,7 @@ else
         git checkout ${git_branch} || exit $?
     fi 
     info "Installing application modules using npm" 
-    /tmp/nodejs/nodejs/bin/npm install --silent || exit $?
+    ${NODEJS_ROOT}/nodejs/bin/npm install --silent || exit $?
 fi
 
 info "Finished installing application ${app_name}"
