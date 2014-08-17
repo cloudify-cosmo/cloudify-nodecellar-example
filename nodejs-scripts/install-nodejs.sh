@@ -8,7 +8,7 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 #. ${CLOUDIFY_FILE_SERVER}
 
 TEMP_DIR="/tmp"
-NODEJS_ROOT=${TEMP_DIR}/nodejs
+NODEJS_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/nodejs
 NODEJS_TARBALL=node-v0.10.26-linux-x64.tar.gz
 BLUEPRINT_PATH=blueprints/${CLOUDIFY_BLUEPRINT_ID}
 
