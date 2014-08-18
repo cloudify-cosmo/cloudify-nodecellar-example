@@ -42,7 +42,8 @@ node_types:
             git_branch: {}
             base_port: {}
             num_instances: {}
-            env_file_path: {}
+            env_file_path:
+                default: ''
 
 relationships:
     nodecellar_connected_to_mongo:
@@ -121,8 +122,7 @@ node_templates:
             git_branch: master 
             base_port: 8080
             num_instances: 1
-            env_file_path: /tmp/mongo_host_and_port.sh
-            scripts:            
+            scripts:
                 create: nodejs-scripts/install-app.sh
                 start: nodejs-scripts/start-app.sh
                 stop: nodejs-scripts/stop-app.sh

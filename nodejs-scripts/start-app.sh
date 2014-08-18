@@ -8,14 +8,18 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 #. ${CLOUDIFY_FILE_SERVER}
 
 TEMP_DIR="/tmp"
-APP_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/${app_name}
+APP_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/nodecellar
 NODEJS_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/nodejs
 PID_FILE="nodejs.pid"
 
 info "Changing directory to ${APP_ROOT}"
 cd ${APP_ROOT} || exit $?
 
-. ${TEMP_DIR}/mongo_host_and_port.sh
+if [ -z "env_file_path" ]; then
+    . ${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/mongo_host_and_port.sh
+else
+    . ${env_file_path}/mongo_host_and_port.sh
+fi
 
 export NODECELLAR_PORT=${base_port}
 

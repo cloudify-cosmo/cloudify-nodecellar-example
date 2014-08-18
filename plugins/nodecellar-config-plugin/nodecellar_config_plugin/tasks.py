@@ -29,7 +29,9 @@ def get_mongo_host_and_port(ctx, **kwargs):
     
     ctx.logger.info("Mongo IP address is {} and port is {}".format(mongo_ip_address, mongo_port))
 
-    env_file_path = ctx.properties.get("env_file_path", "/tmp/mongo_host_and_port.sh")
+    env_file_path = ctx.properties.get(
+        "env_file_path",
+        "/tmp/{0}/mongo_host_and_port.sh".format(ctx.execution_id))
     ctx.logger.info("Writing file {}".format(env_file_path))
 
     with open(env_file_path, 'w') as env_file:

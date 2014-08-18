@@ -38,7 +38,7 @@ else
     curl -O http://nodejs.org/dist/v0.10.26/${NODEJS_TARBALL} || exit $?
 fi
 
-if [ ! -d mongodb ]; then
+if [ ! -d nodejs ]; then
     info "Untaring nodejs"
     tar -zxvf node-v0.10.26-linux-x64.tar.gz || exit $?
 
