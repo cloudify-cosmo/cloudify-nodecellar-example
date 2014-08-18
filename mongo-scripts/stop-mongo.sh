@@ -8,7 +8,7 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 
 
 TEMP_DIR="/tmp"
-MONGO_ROOT=${TEMP_DIR}/mongodb
+MONGO_ROOT=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/mongodb
 PID_FILE="mongo.pid"
 
 PID=`cat ${MONGO_ROOT}/${PID_FILE}`

@@ -8,16 +8,18 @@ function error(){ builtin echo [ERROR] [$(basename $0)] $@; }
 #. ${CLOUDIFY_FILE_SERVER}
 
 TEMP_DIR="/tmp"
+BASE_DIR=${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}
+NODEJS_ROOT=${BASE_DIR}/nodejs
 
 
-info "Changing directory to ${TEMP_DIR}"
-cd ${TEMP_DIR} || exit $?
+info "Changing directory to ${BASE_DIR}"
+cd ${BASE_DIR} || exit $?
 
 YUM_CMD=$(which yum)
 APT_GET_CMD=$(which apt-get)
 
 
-info "Downloading application sources to ${TEMP_DIR}"
+info "Downloading application sources to ${BASE_DIR}"
 if [ -f nodecellar ]; then
     info "Application sources already exists, skipping"   
 else
@@ -38,7 +40,7 @@ else
         git checkout ${git_branch} || exit $?
     fi 
     info "Installing application modules using npm" 
-    /tmp/nodejs/nodejs/bin/npm install --silent || exit $?
+    ${NODEJS_ROOT}/nodejs/bin/npm install --silent || exit $?
 fi
 
 info "Finished installing application ${app_name}"
