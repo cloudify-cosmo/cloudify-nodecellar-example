@@ -4,7 +4,7 @@ imports:
     - http://www.getcloudify.org/spec/bash-plugin/1.1/plugin.yaml
 
 plugins:
-    nodecellar_config_plugin:
+    nodecellar-config-plugin:
         derived_from: cloudify.plugins.agent_plugin
         properties:
             folder: nodecellar-config-plugin
@@ -50,7 +50,7 @@ relationships:
         derived_from: cloudify.relationships.connected_to
         source_interfaces:
             cloudify.interfaces.relationship_lifecycle:
-                - postconfigure: nodecellar_config_plugin.tasks.get_mongo_host_and_port
+                - postconfigure: nodecellar-config-plugin.nodecellar_config_plugin.tasks.get_mongo_host_and_port
 
 
 node_templates:
