@@ -15,7 +15,7 @@ PID_FILE="nodejs.pid"
 info "Changing directory to ${APP_ROOT}"
 cd ${APP_ROOT} || exit $?
 
-if [ -z "env_file_path" ]; then
+if [ -z "${env_file_path}" ]; then
     . ${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/mongo_host_and_port.sh
 else
     . ${env_file_path}/mongo_host_and_port.sh
