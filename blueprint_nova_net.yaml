@@ -1,0 +1,131 @@
+imports:
+    - http://www.getcloudify.org/spec/bash-plugin/1.0/plugin.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-openstack-plugin/CFY-999-nova-net/plugin.yaml
+
+plugins:
+    nodecellar_config_plugin:
+        derived_from: cloudify.plugins.agent_plugin
+        properties:
+            folder: nodecellar-config-plugin
+types:
+    vm_host:
+        derived_from: cloudify.openstack.server
+        properties:
+            -   cloudify_agent:
+                    user: ubuntu
+            -   server:
+
+                ### if defined, will serve as the hostname for the started instance,
+                ### otherwise, the node_id will be used
+                    #name: no_name            ### HOST_NAME""
+                    image:     0b9f53c8-e5dc-495a-87cc-c9654c29e2e5
+                    flavor:     2 ### FLAVOR_NAME
+                    security_groups: ['node_cellar_security_group']
+
+    mongo_database:
+        derived_from: cloudify.types.bash.db_server
+        properties:
+            -   role
+            -   port
+
+    nodejs_server:
+        derived_from: cloudify.types.bash.app_server
+
+    nodejs_app:
+        derived_from: cloudify.types.bash.app_module
+        properties:
+            -   app_name
+            -   startup_script
+            -   git_url
+            -   git_branch
+            -   base_port
+            -   num_instances
+            -   env_file_path
+
+relationships:
+    nodecellar_connected_to_mongo:
+        derived_from: cloudify.relationships.connected_to
+        source_interfaces:
+            cloudify.interfaces.relationship_lifecycle:
+                - postconfigure: nodecellar_config_plugin.tasks.get_mongo_host_and_port
+
+blueprint:
+    name: nodecellar
+    nodes:
+
+    - name: node_cellar_security_group
+      type: cloudify.openstack.nova_net.security_group
+      properties:
+        security_group:
+          name: node_cellar_security_group
+          description: 'node-cellar security group'
+        rules:
+          - cidr: 0.0.0.0/0
+            port: 8080
+          - cidr: 0.0.0.0/0
+            port: 27017
+          - cidr: 0.0.0.0/0
+            port: 28017
+
+    - name: floatingip
+      type: cloudify.openstack.nova_net.floating_ip
+
+    - name: mongod_vm
+      type: vm_host
+      instances:
+          deploy: 1
+      relationships:
+        - target: node_cellar_security_group
+          type: cloudify.relationships.depends_on
+
+    - name: nodejs_vm
+      type: vm_host
+      instances:
+          deploy: 1
+      relationships:
+        - target: node_cellar_security_group
+          type: cloudify.relationships.depends_on
+        - target: floatingip
+          type: cloudify.openstack.server_connected_to_floating_ip
+
+    - name: mongod
+      type: mongo_database
+      properties:
+            role: mongod
+            port: 27017
+            scripts:
+                create: mongo-scripts/install-mongo.sh
+                start: mongo-scripts/start-mongo.sh
+                stop: mongo-scripts/stop-mongo.sh
+      relationships:
+        - target: mongod_vm
+          type: cloudify.relationships.contained_in
+
+    - name: nodejs
+      type: nodejs_server
+      properties:
+            scripts:
+                create: nodejs-scripts/install-nodejs.sh
+      relationships:
+        - type: cloudify.relationships.contained_in
+          target: nodejs_vm
+
+    - name: nodecellar_app
+      type: nodejs_app
+      properties:
+            app_name: nodecellar
+            startup_script: server.js
+            git_url: https://github.com/cloudify-cosmo/nodecellar.git
+            git_branch: master
+            base_port: 8080
+            num_instances: 1
+            env_file_path: /tmp/mongo_host_and_port.sh
+            scripts:
+                create: nodejs-scripts/install-app.sh
+                start: nodejs-scripts/start-app.sh
+                stop: nodejs-scripts/stop-app.sh
+      relationships:
+        - type: cloudify.relationships.contained_in
+          target: nodejs
+        - type: nodecellar_connected_to_mongo
+          target: mongod
