@@ -18,7 +18,7 @@ cd ${APP_ROOT} || exit $?
 if [ -z "${env_file_path}" ]; then
     . ${TEMP_DIR}/${CLOUDIFY_EXECUTION_ID}/mongo_host_and_port.sh
 else
-    . ${env_file_path}/mongo_host_and_port.sh
+    . ${env_file_path}
 fi
 
 export NODECELLAR_PORT=${base_port}
