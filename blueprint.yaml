@@ -24,7 +24,6 @@ node_types:
                     #name: no_name            ### HOST_NAME""
                     image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
                     flavor:     101 ### FLAVOR_NAME
-                    security_groups: ['node_cellar_security_group']
 
     mongo_database:
         derived_from: cloudify.types.bash.db_server
@@ -81,7 +80,7 @@ node_templates:
           deploy: 1
       relationships:
         - target: node_cellar_security_group
-          type: cloudify.relationships.depends_on
+          type: cloudify.openstack.server_connected_to_security_group
 
     nodejs_vm:
       type: vm_host
@@ -91,7 +90,7 @@ node_templates:
         - target: floatingip
           type: cloudify.openstack.server_connected_to_floating_ip
         - target: node_cellar_security_group
-          type: cloudify.relationships.depends_on
+          type: cloudify.openstack.server_connected_to_security_group
 
     mongod:
       type: mongo_database
