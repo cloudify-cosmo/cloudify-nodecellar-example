@@ -16,13 +16,13 @@ node_types:
       cloudify_agent:
         default:
           user: ubuntu
-        server:
-          default:
-            ### if defined, will serve as the hostname for the started instance,
-            ### otherwise, the node_id will be used
-            #name: no_name            ### HOST_NAME""
-            image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
-            flavor:     101 ### FLAVOR_NAME
+      server:
+        default:
+          ### if defined, will serve as the hostname for the started instance,
+          ### otherwise, the node_id will be used
+          #name: no_name            ### HOST_NAME""
+          image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
+          flavor:     101 ### FLAVOR_NAME
 
   mongo_database:
     derived_from: cloudify.types.db_server
@@ -154,4 +154,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodejs_vm, ip ] }
-      port: { get_property: [ nodecellar_app, port ] }
+      port: { get_property: [ nodecellar_app, base_port ] }
