@@ -65,7 +65,7 @@ relationships:
     derived_from: cloudify.relationships.connected_to
     source_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-        - postconfigure: nodecellar_config.nodecellar_config_plugin.tasks.get_mongo_host_and_port
+          - postconfigure: nodecellar-scripts/postconfigure.py
 
 
 node_templates:
