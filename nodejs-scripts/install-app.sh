@@ -29,7 +29,7 @@ else
     ctx logger info "cloning application from git url ${git_url}" 
     git clone ${git_url} || exit $?
     cd nodecellar || exit $?
-    if [[ ! -z $git_branch ]]; then
+    if [[ ! -z "$git_branch" ]] && [[ "$git_branch" != "master" ]] ; then
         ctx logger info "checking out branch ${git_branch}" 
         git checkout ${git_branch} || exit $?
     fi 
