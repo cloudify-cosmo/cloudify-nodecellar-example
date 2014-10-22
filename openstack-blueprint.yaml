@@ -65,7 +65,9 @@ relationships:
     derived_from: cloudify.relationships.connected_to
     source_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          - postconfigure: nodecellar-scripts/postconfigure.py
+          postconfigure:
+              implementation: nodecellar-scripts/postconfigure.py
+              inputs: {}
 
 
 node_templates:
@@ -83,7 +85,7 @@ node_templates:
           port: 28017
 
   floatingip:
-    type: cloudify.openstack.floatingip    
+    type: cloudify.openstack.floatingip
     properties:
       floatingip:
         floating_network_name: Ext-Net
@@ -113,9 +115,9 @@ node_templates:
       port: 27017
     interfaces:
       cloudify.interfaces.lifecycle:
-        - create: mongo-scripts/install-mongo.sh
-        - start: mongo-scripts/start-mongo.sh
-        - stop: mongo-scripts/stop-mongo.sh
+        create: mongo-scripts/install-mongo.sh
+        start: mongo-scripts/start-mongo.sh
+        stop: mongo-scripts/stop-mongo.sh
     relationships:
       - target: mongod_vm
         type: cloudify.relationships.contained_in
@@ -124,7 +126,7 @@ node_templates:
     type: nodejs_server
     interfaces:
       cloudify.interfaces.lifecycle:
-        - create: nodejs-scripts/install-nodejs.sh
+        create: nodejs-scripts/install-nodejs.sh
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs_vm
@@ -135,18 +137,18 @@ node_templates:
       app_name: nodecellar
       startup_script: server.js
       git_url: https://github.com/cloudify-cosmo/nodecellar.git
-      git_branch: master 
+      git_branch: master
       base_port: 8080
       num_instances: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        - create: nodejs-scripts/install-app.sh
-        - start: nodejs-scripts/start-app.sh
-        - stop: nodejs-scripts/stop-app.sh
+        create: nodejs-scripts/install-app.sh
+        start: nodejs-scripts/start-app.sh
+        stop: nodejs-scripts/stop-app.sh
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs
-      - type: nodecellar_connected_to_mongo 
+      - type: nodecellar_connected_to_mongo
         target: mongod
 
 outputs:
