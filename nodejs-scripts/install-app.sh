@@ -27,7 +27,13 @@ else
     git_branch=$(ctx node properties git_branch)
 
     ctx logger info "cloning application from git url ${git_url}" 
-    git clone ${git_url} || exit $?
+    if [[ ! -z "$git_branch" ]]; then
+        git clone ${git_url} || exit $?
+    else 
+        ctx logger info "checking out branch ${git_branch}" 
+       git clone -b ${git_branch} ${git_url} || exit $?
+    fi
+    
     cd nodecellar || exit $?
     if [[ ! -z $git_branch ]]; then
         ctx logger info "checking out branch ${git_branch}" 
