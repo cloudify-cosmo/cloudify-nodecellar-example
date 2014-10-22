@@ -31,7 +31,7 @@ else
         git clone ${git_url} || exit $?
     else 
         ctx logger info "checking out branch ${git_branch}" 
-       git clone -b ${git_branch} ${git_url} || exit $?
+       git clone ${git_url} -b ${git_branch} || exit $?
     fi
     
     cd nodecellar || exit $?
