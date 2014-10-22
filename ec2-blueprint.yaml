@@ -62,18 +62,18 @@ relationships:
 
 
 node_templates:
-    node_cellar_security_group:
-      type: cloudify.libcloud.security_group
-      properties:
-        security_group:
-          name: node_cellar_sg
-        rules:
-          - remote_ip_prefix: 0.0.0.0/0
-            port: { get_property: [ nodecellar_app, base_port ] }
-          - remote_ip_prefix: 0.0.0.0/0
-            port: { get_property: [ mongod, port ] }
-          - remote_ip_prefix: 0.0.0.0/0
-            port: 28017
+  node_cellar_security_group:
+    type: cloudify.libcloud.security_group
+    properties:
+      security_group:
+        name: node_cellar_sg
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar_app, base_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ mongod, port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 28017
 
   floatingip:
     type: cloudify.libcloud.floatingip
