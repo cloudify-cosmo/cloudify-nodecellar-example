@@ -153,11 +153,11 @@ Next, we'll upload the sample blueprint and create a deployment based on it. You
 git clone https://github.com/cloudify-cosmo/cloudify-nodecellar-openstack.git
 ```
 
-This will create a directory called `cloudify-nodecellar-openstack` in your current directory. cd to this directory. You can see the blueprint file (named `blueprint.yaml`) alongside other resources related to this blueprint. 
+This will create a directory called `cloudify-nodecellar-openstack` in your current directory. cd to this directory. You can see the blueprint file (named `openstack-blueprint.yaml`) alongside other resources related to this blueprint. 
 To upload the blueprint type the following command: 
 
 ```
-cfy blueprints upload -b nodecellar1 blueprint.yaml
+cfy blueprints upload -b nodecellar1 openstack-blueprint.yaml
 ```
 
 The `-b` parameter is the unique name we've given to this blueprint on the Cloudify manager. A blueprint is a template of an application stack. Blueprints cannot be materialize on their own. For that you will need to create a deployment, which is essintially an instance of this blueprint (kind of like what an instance is to a class in an OO model). But first let's go back to the web UI and see what this blueprint looks like. Point your browser to the manager URL again, and refresh the screen. You will see the nodecellar blueprint listed there. 
