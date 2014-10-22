@@ -2,22 +2,20 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.1m5/plugin.yaml
+  - http://www.getcloudify.org/spec/libcloud-plugin/1.1m5/plugin.yaml
 
 node_types:
   vm_host:
-    derived_from: cloudify.openstack.server
+    derived_from: cloudify.libcloud.server
     properties:
       cloudify_agent:
         default:
           user: ubuntu
       server:
         default:
-          ### if defined, will serve as the hostname for the started instance,
-          ### otherwise, the node_id will be used
-          #name: no_name            ### HOST_NAME""
-          image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
-          flavor:     101 ### FLAVOR_NAME
+          image_name: ami-a73264ce
+          size_name: m1.medium
+          security_groups: ['node_cellar_sg']
 
   mongo_database:
     derived_from: cloudify.types.db_server
@@ -60,30 +58,25 @@ relationships:
     derived_from: cloudify.relationships.connected_to
     source_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          postconfigure:
-              implementation: nodecellar-scripts/postconfigure.py
-              inputs: {}
+          - postconfigure: nodecellar-scripts/postconfigure.py
 
 
 node_templates:
-  node_cellar_security_group:
-    type: cloudify.openstack.security_group
-    properties:
-      security_group:
-        name: node_cellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar_app, base_port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 28017
+    node_cellar_security_group:
+      type: cloudify.libcloud.security_group
+      properties:
+        security_group:
+          name: node_cellar_sg
+        rules:
+          - remote_ip_prefix: 0.0.0.0/0
+            port: { get_property: [ nodecellar_app, base_port ] }
+          - remote_ip_prefix: 0.0.0.0/0
+            port: { get_property: [ mongod, port ] }
+          - remote_ip_prefix: 0.0.0.0/0
+            port: 28017
 
   floatingip:
-    type: cloudify.openstack.floatingip
-    properties:
-      floatingip:
-        floating_network_name: Ext-Net
+    type: cloudify.libcloud.floatingip
 
   mongod_vm:
     type: vm_host
@@ -91,7 +84,7 @@ node_templates:
       deploy: 1
     relationships:
       - target: node_cellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+        type: cloudify.relationships.connected_to
 
   nodejs_vm:
     type: vm_host
@@ -99,9 +92,9 @@ node_templates:
       deploy: 1
     relationships:
       - target: floatingip
-        type: cloudify.openstack.server_connected_to_floating_ip
+        type: cloudify.libcloud.server_connected_to_floating_ip
       - target: node_cellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+        type: cloudify.relationships.connected_to
 
   mongod:
     type: mongo_database
@@ -110,9 +103,9 @@ node_templates:
       port: 27017
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: mongo-scripts/install-mongo.sh
-        start: mongo-scripts/start-mongo.sh
-        stop: mongo-scripts/stop-mongo.sh
+        - create: mongo-scripts/install-mongo.sh
+        - start: mongo-scripts/start-mongo.sh
+        - stop: mongo-scripts/stop-mongo.sh
     relationships:
       - target: mongod_vm
         type: cloudify.relationships.contained_in
@@ -121,7 +114,7 @@ node_templates:
     type: nodejs_server
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-nodejs.sh
+        - create: nodejs-scripts/install-nodejs.sh
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs_vm
@@ -132,18 +125,18 @@ node_templates:
       app_name: nodecellar
       startup_script: server.js
       git_url: https://github.com/cloudify-cosmo/nodecellar.git
-      git_branch: master
+      git_branch: master 
       base_port: 8080
       num_instances: 1
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-app.sh
-        start: nodejs-scripts/start-app.sh
-        stop: nodejs-scripts/stop-app.sh
+        - create: nodejs-scripts/install-app.sh
+        - start: nodejs-scripts/start-app.sh
+        - stop: nodejs-scripts/stop-app.sh
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs
-      - type: nodecellar_connected_to_mongo
+      - type: nodecellar_connected_to_mongo 
         target: mongod
 
 outputs:
