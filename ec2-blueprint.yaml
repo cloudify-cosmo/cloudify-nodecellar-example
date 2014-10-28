@@ -1,12 +1,12 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
-  - http://www.getcloudify.org/spec/libcloud-plugin/1.1m5/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+  - http://www.getcloudify.org/spec/libcloud-plugin/1.1rc1/plugin.yaml
 
 node_types:
   vm_host:
-    derived_from: cloudify.libcloud.server
+    derived_from: cloudify.libcloud.nodes.Server
     properties:
       cloudify_agent:
         default:
@@ -18,7 +18,7 @@ node_types:
           security_groups: ['node_cellar_sg']
 
   mongo_database:
-    derived_from: cloudify.types.db_server
+    derived_from: cloudify.nodes.DBMS
     properties:
       role:
         description: MongoDB role
@@ -26,10 +26,10 @@ node_types:
         description: MongoDB port
 
   nodejs_server:
-    derived_from: cloudify.types.app_server
+    derived_from: cloudify.nodes.ApplicationServer
 
   nodejs_app:
-    derived_from: cloudify.types.app_module
+    derived_from: cloudify.nodes.ApplicationServer
     properties:
       app_name:
         description: Application name
@@ -64,7 +64,7 @@ relationships:
 
 node_templates:
   node_cellar_security_group:
-    type: cloudify.libcloud.security_group
+    type: cloudify.libcloud.nodes.SecurityGroup
     properties:
       security_group:
         name: node_cellar_sg
@@ -77,7 +77,7 @@ node_templates:
           port: 28017
 
   floatingip:
-    type: cloudify.libcloud.floatingip
+    type: cloudify.libcloud.nodes.FloatingIP
 
   mongod_vm:
     type: vm_host

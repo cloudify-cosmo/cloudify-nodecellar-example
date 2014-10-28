@@ -6,7 +6,7 @@ imports:
 
 node_types:
   vm_host:
-    derived_from: cloudify.openstack.server
+    derived_from: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
         default:
@@ -20,7 +20,7 @@ node_types:
           flavor:     101 ### FLAVOR_NAME
 
   mongo_database:
-    derived_from: cloudify.types.db_server
+    derived_from: cloudify.nodes.DBMS
     properties:
       role:
         description: MongoDB role
@@ -28,10 +28,10 @@ node_types:
         description: MongoDB port
 
   nodejs_server:
-    derived_from: cloudify.types.app_server
+    derived_from: cloudify.nodes.ApplicationServer
 
   nodejs_app:
-    derived_from: cloudify.types.app_module
+    derived_from: cloudify.nodes.ApplicationServer
     properties:
       app_name:
         description: Application name
@@ -67,7 +67,7 @@ relationships:
 
 node_templates:
   node_cellar_security_group:
-    type: cloudify.openstack.security_group
+    type: cloudify.openstack.nodes.SecurityGroup
     properties:
       security_group:
         name: node_cellar_security_group
@@ -80,7 +80,7 @@ node_templates:
           port: 28017
 
   floatingip:
-    type: cloudify.openstack.floatingip
+    type: cloudify.openstack.nodes.FloatingIP
     properties:
       floatingip:
         floating_network_name: Ext-Net
