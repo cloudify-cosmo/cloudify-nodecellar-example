@@ -1,0 +1,232 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    #- http://www.getcloudify.org/spec/bash-plugin/1.1m5/plugin.yaml
+    - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
+    - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1m5/plugin.yaml.template
+
+# plugins:
+#     nodecellar_config:
+#         executor: host_agent
+#         source: nodecellar-config-plugin
+
+inputs:
+    cloudstack_api_url:
+        description: >
+            The Cloudstack API Url
+        default: "https://betacloud.mccx.schubergphilis.com/client/api"
+
+    cloudstack_key:
+        description: >
+            The Cloudstack API key
+
+    cloudstack_secret:
+        description: >
+            The Cloudstack API secret
+
+node_types:
+    virtual_machine:
+        derived_from: cloudify.cloudstack.virtual_machine
+        properties:
+            management_network_name:
+                default: { get_property: [mgmt_network, resource_id] }
+            portmaps:
+                default: {}
+            network:
+                default:
+                    default_network: node_cellar_network
+                    #default_security_group ['node_cellar_security_group']
+                    ip_address: {}
+            install_agent:
+                default: true
+            cloudify_agent:
+                default:
+                    user: root
+                    port: 22
+                    # example for ssh key file (see `key_name` below)
+                    # this file matches the agent key configured during the bootstrap
+                    key: /root/.ssh/cloudify-agents-kp.pem
+            server:
+                default:
+                    ### if defined, will serve as the hostname for the started instance,
+                    ### otherwise, the node_id will be used
+                    #name: no_name            ### HOST_NAME""
+                    image_id: 1046fbb6-2f2f-49f1-8b64-6c1d6a620597
+                    size: employee-medium-ha
+                    keypair_name: cloudify-agents-kp
+                    # node can only be in either default_network OR security_group NOT both
+                    # extra networks will be added through relationships if neeeded.
+
+    mongo_database:
+        derived_from: cloudify.types.db_server
+        properties:
+            role:
+              description: MongoDB role
+            port:
+              description: MongDB port
+
+    nodejs_server:
+        derived_from: cloudify.types.app_server
+
+    nodejs_app:
+        derived_from: cloudify.types.app_module
+        properties:
+          app_name:
+            description: Application name
+            type: string
+          startup_script:
+            description: Nodejs startup script
+            type: string
+          git_url:
+            description: Web application git url
+            type: string
+          git_branch:
+            description: git branch
+            type: string
+          base_port:
+            description: Web application port
+            type: integer
+          num_instances:
+            description: Number of instances
+            type: integer
+          env_file_path:
+              type: string
+              default: ''
+
+relationships:
+    nodecellar_connected_to_mongo:
+        derived_from: cloudify.relationships.connected_to
+        source_interfaces:
+            cloudify.interfaces.relationship_lifecycle:
+                postconfigure:
+                  implementation: nodecellar-scripts/postconfigure.py
+                  inputs: {}
+
+node_templates:
+    node_cellar_network:
+      type: cloudify.cloudstack.network
+      properties:
+          resource_id: node_cellar_network
+          network:
+              #name: node_cellar_network
+              service_offering: 'SourceNatNiciraNvpNetwork'
+              zone: 'BETA-SBP-DC-1'
+              gateway: 10.4.1.1
+              netmask: 255.255.255.0
+          firewall:
+              - type: ingress
+                protocol: TCP
+                cidr: 0.0.0.0/0
+                ports: [8080]
+              - type: egress
+                protocol: TCP
+                cidr: 0.0.0.0/0
+                ports: [80, 443]
+
+    floatingip:
+      type: cloudify.cloudstack.floatingip    
+      properties:
+        floatingip:
+          floating_network_name: node_cellar_network
+      relationships:
+          - target: node_cellar_network
+            type: cloudify.cloudstack.floating_ip_connected_to_network
+
+    mgmt_network:
+      type: cloudify.cloudstack.network
+      properties:
+          resource_id: cfy-mgmt
+          use_external_resource: True
+          network:
+              #name: cfy_agent
+              service_offering: 'SourceNatNiciraNvpNetwork'
+              zone: 'BETA-SBP-DC-1'
+
+    mongod_vm:
+        type: virtual_machine
+        instances:
+            deploy: 1
+        relationships:
+            - target: node_cellar_network
+              type: cloudify.relationships.connected_to
+            - target: mgmt_network
+              type: cloudify.cloudstack.virtual_machine_connected_to_network
+
+    nodejs_vm:
+        type: virtual_machine
+        instances:
+          deploy: 1
+        properties:
+            portmaps:
+                - protocol: TCP
+                  private_port: 8080
+                  private_end_port: 8080
+                  public_port: 8080
+                  public_end_port: 8080
+                  open_firewall: True
+                - protocol: TCP
+                  private_port: 8081
+                  private_end_port: 8081
+                  public_port: 8081
+                  public_end_port: 8081
+                  open_firewall: False
+
+        relationships:
+            - target: node_cellar_network
+              type: cloudify.relationships.connected_to
+            - target: floatingip
+              type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
+            - target: mgmt_network
+              type: cloudify.cloudstack.virtual_machine_connected_to_network
+
+
+    mongod:
+        type: mongo_database
+        properties:
+            role: mongod
+            port: 27017
+        interfaces:
+          cloudify.interfaces.lifecycle:
+              create: mongo-scripts/install-mongo.sh
+              start: mongo-scripts/start-mongo.sh
+              stop: mongo-scripts/stop-mongo.sh
+        relationships:
+            - target: mongod_vm
+              type: cloudify.relationships.contained_in
+
+    nodejs:
+        type: nodejs_server
+        interfaces:
+          cloudify.interfaces.lifecycle:
+              create: nodejs-scripts/install-nodejs.sh
+        relationships:
+            - type: cloudify.relationships.contained_in
+              target: nodejs_vm
+
+    nodecellar_app:
+        type: nodejs_app
+        properties:
+            app_name: nodecellar
+            startup_script: server.js
+            git_url: https://github.com/cloudify-cosmo/nodecellar.git
+            git_branch: master
+            base_port: 8080
+            num_instances: 1
+        interfaces:
+          cloudify.interfaces.lifecycle:
+              create: nodejs-scripts/install-app.sh
+              start: nodejs-scripts/start-app.sh
+              stop: nodejs-scripts/stop-app.sh
+        relationships:
+            - type: cloudify.relationships.contained_in
+              target: nodejs
+            - type: nodecellar_connected_to_mongo
+              target: mongod
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodejs_vm, ip ] }
+      port: { get_property: [ nodecellar_app, base_port ] }
+
