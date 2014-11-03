@@ -132,7 +132,7 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_vm, ip ] }
+      ip_address: { get_attribute: [ vm, ip ] }
       port: { get_property: [ nodecellar_app, base_port ] }
 
 
