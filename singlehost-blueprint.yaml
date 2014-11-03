@@ -1,7 +1,7 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
-imports:
-  - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
+imports:  
+  - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
 
 ################################################################
 # Blueprint inputs
