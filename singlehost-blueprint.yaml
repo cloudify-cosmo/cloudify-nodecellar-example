@@ -1,0 +1,139 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
+
+################################################################
+# Blueprint inputs
+# 
+# The values are provided via the inputs.json file.
+# passed when creating the deployment (-i inputs.json).
+################################################################
+inputs:
+
+    host_ip:
+        description: >
+          The ip of the host the application will be deployed on  
+        default: 127.0.0.1      
+
+    agent_user:
+        description: >
+          User name used when SSH-ing into the started machine
+        default: vagrant
+
+    agent_private_key_path:
+        description: >
+          Path to a private key that resided on the management machine.
+          SSH-ing into agent machines will be done with this key.
+        default: /home/vagrant/.ssh/agent_key.pem
+
+node_types:  
+
+  mongo_database:
+    derived_from: cloudify.nodes.DBMS
+    properties:
+      role:
+        description: MongoDB role
+      port:
+        description: MongoDB port
+
+  nodejs_server:
+    derived_from: cloudify.nodes.ApplicationServer
+
+  nodejs_app:
+    derived_from: cloudify.nodes.ApplicationModule
+    properties:
+      app_name:
+        description: Application name
+        type: string
+      startup_script:
+        description: Nodejs startup script
+        type: string
+      git_url:
+        description: Web application git url
+        type: string
+      git_branch:
+        description: git branch
+        type: string
+      base_port:
+        description: Web application port
+        type: integer
+      num_instances:
+        description: Number of instances
+        type: integer
+      env_file_path:
+          type: string
+          default: ''
+
+relationships:
+  nodecellar_connected_to_mongo:
+    derived_from: cloudify.relationships.connected_to
+    source_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+          postconfigure:
+              implementation: nodecellar-scripts/postconfigure.py
+              inputs: {}
+
+
+node_templates:
+
+  vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: host_ip }
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
+
+  mongod:
+    type: mongo_database
+    properties:
+      role: mongod
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: mongo-scripts/install-mongo.sh
+        start: mongo-scripts/start-mongo.sh
+        stop: mongo-scripts/stop-mongo.sh
+    relationships:
+      - target: vm
+        type: cloudify.relationships.contained_in
+
+  nodejs:
+    type: nodejs_server
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: nodejs-scripts/install-nodejs.sh
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+
+  nodecellar_app:
+    type: nodejs_app
+    properties:
+      app_name: nodecellar
+      startup_script: server.js
+      git_url: https://github.com/cloudify-cosmo/nodecellar.git
+      git_branch: master
+      base_port: 8080
+      num_instances: 1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: nodejs-scripts/install-app.sh
+        start: nodejs-scripts/start-app.sh
+        stop: nodejs-scripts/stop-app.sh
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs
+      - type: nodecellar_connected_to_mongo
+        target: mongod
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodejs_vm, ip ] }
+      port: { get_property: [ nodecellar_app, base_port ] }
+
+
+
