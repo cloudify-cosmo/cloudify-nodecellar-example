@@ -3,7 +3,7 @@
 TEMP_DIR="/tmp"
 APP_ROOT=${TEMP_DIR}/$(ctx execution-id)/nodecellar
 NODEJS_ROOT=${TEMP_DIR}/$(ctx execution-id)/nodejs
-PID_FILE="nodejs.pid"
+PID_FILE="/tmp/nodejs.pid"
 
 ctx logger info "Changing directory to ${APP_ROOT}"
 cd ${APP_ROOT} || exit $?

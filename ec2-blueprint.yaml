@@ -29,7 +29,7 @@ node_types:
     derived_from: cloudify.nodes.ApplicationServer
 
   nodejs_app:
-    derived_from: cloudify.nodes.ApplicationServer
+    derived_from: cloudify.nodes.ApplicationModule
     properties:
       app_name:
         description: Application name

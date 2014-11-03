@@ -2,7 +2,7 @@
 
 TEMP_DIR="/tmp"
 MONGO_ROOT=${TEMP_DIR}/$(ctx execution-id)/mongodb
-PID_FILE="mongo.pid"
+PID_FILE="/tmp/mongo.pid"
 
 ctx logger info "Changing directory to ${MONGO_ROOT}"
 cd ${MONGO_ROOT} || exit $?
@@ -47,4 +47,3 @@ ctx logger info "About to post IP address ${IP_ADDR} and port ${port}"
 
 ctx instance runtime-properties port ${port}
 ctx instance runtime-properties ip_address ${IP_ADDR}
-
