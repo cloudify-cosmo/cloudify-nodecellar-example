@@ -42,7 +42,7 @@ else
     ctx logger info "Skipping, jq already installed"
 fi
 
-IP_ADDR=$(ip addr | grep inet | grep eth0 | awk -F" " '{print $2}'| sed -e 's/\/.*$//')
+IP_ADDR=$(ctx instance host_ip)
 ctx logger info "About to post IP address ${IP_ADDR} and port ${port}"
 
 ctx instance runtime-properties port ${port}
