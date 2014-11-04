@@ -14,18 +14,15 @@ inputs:
     host_ip:
         description: >
           The ip of the host the application will be deployed on  
-        default: 127.0.0.1      
 
     agent_user:
         description: >
           User name used when SSH-ing into the started machine
-        default: vagrant
 
     agent_private_key_path:
         description: >
           Path to a private key that resided on the management machine.
           SSH-ing into agent machines will be done with this key.
-        default: /home/vagrant/.ssh/agent_key.pem
 
 node_types:  
 
@@ -132,7 +129,7 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ vm, ip ] }
+      ip_address: { get_property: [ vm, ip ] }
       port: { get_property: [ nodecellar_app, base_port ] }
 
 
