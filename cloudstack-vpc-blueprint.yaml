@@ -43,19 +43,11 @@ node_types:
                 default:
                     user: root
                     port: 22
-                    # example for ssh key file (see `key_name` below)
-                    # this file matches the agent key configured during the bootstrap
-                    #key: /root/.ssh/cloudify-agents-kp.pem
             server:
                 default:
-                    ### if defined, will serve as the hostname for the started instance,
-                    ### otherwise, the node_id will be used
-                    #name: no_name            ### HOST_NAME""
                     image_id: 1046fbb6-2f2f-49f1-8b64-6c1d6a620597
                     size: employee-medium-ha
-                    #keypair_name: cloudify-agents-kp
-                    # node can only be in either default_network OR security_group NOT both
-                    # extra networks will be added through relationships if neeeded.
+                    expunge: True
 
     mongo_database:
         derived_from: cloudify.types.db_server
@@ -123,6 +115,10 @@ node_templates:
                 protocol: TCP
                 cidr: 0.0.0.0/0
                 ports: [80, 443]
+              - type: egress
+                protocol: TCP
+                cidr: 10.5.2.0/24
+                ports: [27017]
       relationships:
           - target: nodecellar_vpc
             type: cloudify.relationships.contained_in
@@ -147,6 +143,10 @@ node_templates:
                 protocol: TCP
                 cidr: 0.0.0.0/0
                 ports: [80, 443]
+              - type: ingress
+                protocol: TCP
+                cidr: 10.5.1.0/24
+                ports: [27017]
       relationships:
           - target: nodecellar_vpc
             type: cloudify.relationships.contained_in
@@ -206,7 +206,6 @@ node_templates:
                   private_end_port: 8080
                   public_port: 8080
                   public_end_port: 8080
-                  open_firewall: True
         relationships:
             - target: node_cellar_web
               type: cloudify.relationships.connected_to
