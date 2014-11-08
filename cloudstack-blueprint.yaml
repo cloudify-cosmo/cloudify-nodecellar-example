@@ -5,25 +5,6 @@ imports:
     - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
     - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1m5/plugin.yaml.template
 
-# plugins:
-#     nodecellar_config:
-#         executor: host_agent
-#         source: nodecellar-config-plugin
-
-inputs:
-    cloudstack_api_url:
-        description: >
-            The Cloudstack API Url
-        default: "https://betacloud.mccx.schubergphilis.com/client/api"
-
-    cloudstack_key:
-        description: >
-            The Cloudstack API key
-
-    cloudstack_secret:
-        description: >
-            The Cloudstack API secret
-
 node_types:
     virtual_machine:
         derived_from: cloudify.cloudstack.virtual_machine
