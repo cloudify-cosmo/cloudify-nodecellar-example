@@ -1,5 +1,4 @@
 tosca_definitions_version: cloudify_dsl_1_0
-tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     #- http://www.getcloudify.org/spec/bash-plugin/1.1m5/plugin.yaml
@@ -54,7 +53,7 @@ node_types:
                     #name: no_name            ### HOST_NAME""
                     image_id: 1046fbb6-2f2f-49f1-8b64-6c1d6a620597
                     size: employee-medium-ha
-                    keypair_name: cloudify-agents-kp
+                    #keypair_name: cloudify-agents-kp
                     # node can only be in either default_network OR security_group NOT both
                     # extra networks will be added through relationships if neeeded.
 
