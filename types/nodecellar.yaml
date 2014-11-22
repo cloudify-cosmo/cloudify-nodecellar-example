@@ -1,0 +1,68 @@
+################################################################
+# Blueprint node types.
+#
+# specific new types for the nodecellar app.
+# these types are mapped to scripts that are resposible
+# for the lifecycle operation.
+################################################################
+
+node_types:
+
+  cloudify.nodes.nodecellar.MongoDatabase:
+    derived_from: cloudify.nodes.DBMS
+    properties:
+      role:
+        description: MongoDB role
+        type: string
+      port:
+        description: MongoDB port
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: mongo-scripts/install-mongo.sh
+        start:
+          implementation: mongo-scripts/start-mongo.sh
+        stop:
+          implementation: mongo-scripts/stop-mongo.sh
+
+  cloudify.nodes.nodecellar.NodeJSServer:
+    derived_from: cloudify.nodes.ApplicationServer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: nodejs-scripts/install-nodejs.sh
+
+  cloudify.nodes.nodecellar.NodecellarApplicationModule:
+    derived_from: cloudify.nodes.ApplicationModule
+    properties:
+      application_url:
+        description: Web application archive url.
+        type: string
+      port:
+        description: Web application port
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: nodecellar-scripts/install-nodecellar-app.sh
+        start:
+          implementation: nodecellar-scripts/start-nodecellar-app.sh
+        stop:
+          implementation: nodecellar-scripts/stop-nodecellar-app.sh
+
+relationships:
+
+  nodecellar_application_connected_to_mongo:
+    derived_from: cloudify.relationships.connected_to
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+          postconfigure:
+              implementation: scripts/mongo/set-ip.sh
+
+  nodecellar_application_contained_in_nodejs:
+    derived_from: cloudify.relationships.contained_in
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+          postconfigure:
+              implementation: scripts/nodejs/set-root.sh

@@ -1,0 +1,37 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:  
+  - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+  - types/nodecellar.yaml
+
+node_templates:
+
+  mongod:
+    type: cloudify.nodes.nodecellar.MongoDatabase
+    properties:
+      role: mongod
+      port: 27017
+
+  nodejs:
+    type: cloudify.nodes.nodecellar.NodeJSServer
+
+  nodecellar:
+    type: cloudify.nodes.nodecellar.NodeJSApplicationModule
+    properties:
+      application_url: https://github.com/cloudify-cosmo/nodecellar/archive/master.zip
+      port: 8080
+    relationships:
+      - type: nodecellar_application_connected_to_mongo
+        target: mongod
+      - type: nodecellar_application_contained_in_nodejs
+        target: nodejs
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: localhost
+      port: { get_property: [nodecellar, port] }
+
+
+

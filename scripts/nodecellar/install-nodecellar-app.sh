@@ -1,10 +1,9 @@
 #!/bin/bash
 
-TEMP_DIR="/tmp"
+TEMP_DIR='/tmp'
 BASE_DIR=${TEMP_DIR}/$(ctx execution-id)
 NODEJS_ROOT=${BASE_DIR}/nodejs
 
-ctx logger info "Changing directory to ${BASE_DIR}"
 cd ${BASE_DIR} || exit $?
 
 YUM_CMD=$(which yum)
@@ -14,9 +13,9 @@ ctx logger info "Downloading application sources to ${BASE_DIR}"
 if [ -f nodecellar ]; then
     ctx logger info "Application sources already exists, skipping"   
 else
-    if [[ ! -z $YUM_CMD ]]; then
+    if [[ ! -z ${YUM_CMD} ]]; then
         sudo yum -y install git-core || exit $?   
-    elif [[ ! -z $APT_GET_CMD ]]; then 
+    elif [[ ! -z ${APT_GET_CMD} ]]; then
         sudo apt-get -qq install git || exit $?   
      else
         ctx logger error "error can't install package git"
@@ -45,4 +44,3 @@ fi
 
 app_name=$(ctx node properties app_name)
 ctx logger info "Finished installing application ${app_name}"
-
