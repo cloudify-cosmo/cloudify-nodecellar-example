@@ -20,18 +20,18 @@ node_types:
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: mongo-scripts/install-mongo.sh
+          implementation: scripts/mongo/install-mongo.sh
         start:
-          implementation: mongo-scripts/start-mongo.sh
+          implementation: scripts/mongo/start-mongo.sh
         stop:
-          implementation: mongo-scripts/stop-mongo.sh
+          implementation: scripts/mongo/stop-mongo.sh
 
   cloudify.nodes.nodecellar.NodeJSServer:
     derived_from: cloudify.nodes.ApplicationServer
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: nodejs-scripts/install-nodejs.sh
+          implementation: scripts/nodejs/install-nodejs.sh
 
   cloudify.nodes.nodecellar.NodecellarApplicationModule:
     derived_from: cloudify.nodes.ApplicationModule
@@ -45,11 +45,11 @@ node_types:
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
-          implementation: nodecellar-scripts/install-nodecellar-app.sh
+          implementation: scripts/nodecellar/install-nodecellar-app.sh
         start:
-          implementation: nodecellar-scripts/start-nodecellar-app.sh
+          implementation: scripts/nodecellar/start-nodecellar-app.sh
         stop:
-          implementation: nodecellar-scripts/stop-nodecellar-app.sh
+          implementation: scripts/nodecellar/stop-nodecellar-app.sh
 
 relationships:
 
