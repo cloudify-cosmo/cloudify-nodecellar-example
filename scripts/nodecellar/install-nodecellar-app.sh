@@ -1,46 +1,82 @@
 #!/bin/bash
 
-TEMP_DIR='/tmp'
-BASE_DIR=${TEMP_DIR}/$(ctx execution-id)
-NODEJS_ROOT=${BASE_DIR}/nodejs
+function install_curl() {
 
-cd ${BASE_DIR} || exit $?
+    yum_cmd=$(which yum)
+    apt_get_cmd=$(which apt-get)
 
-YUM_CMD=$(which yum)
-APT_GET_CMD=$(which apt-get)
-
-ctx logger info "Downloading application sources to ${BASE_DIR}"
-if [ -f nodecellar ]; then
-    ctx logger info "Application sources already exists, skipping"   
-else
-    if [[ ! -z ${YUM_CMD} ]]; then
-        sudo yum -y install git-core || exit $?   
-    elif [[ ! -z ${APT_GET_CMD} ]]; then
-        sudo apt-get -qq install git || exit $?   
-     else
-        ctx logger error "error can't install package git"
-        exit 1;
-     fi
-
-    git_url=$(ctx node properties git_url)
-    git_branch=$(ctx node properties git_branch)
-
-    ctx logger info "cloning application from git url ${git_url}"
-    if [[ ! -z "$git_branch" ]]; then
-        git clone ${git_url} || exit $?
+    if [[ ! -z ${yum_cmd} ]]; then
+        ctx logger info "Installing package: curl"
+        sudo yum -y install curl || exit $?
+        ctx logger info "Succesfully installed package: curl"
+    elif [[ ! -z ${apt_get_cmd} ]]; then
+        ctx logger info "Installing package: curl"
+        sudo apt-get -qq install curl || exit $?
+        ctx logger info "Succesfully installed package: curl"
     else
-	ctx logger info "checking out branch ${git_branch}"
-	git clone ${git_url} -b ${git_branch} || exit $?
+        ctx logger error 'No package manager available to install package: curl'
+        exit 1;
     fi
 
-    cd nodecellar || exit $?
-    if [[ ! -z $git_branch ]]; then
-        ctx logger info "checking out branch ${git_branch}" 
-        git checkout ${git_branch} || exit $?
-    fi 
-    ctx logger info "Installing application modules using npm" 
-    ${NODEJS_ROOT}/nodejs/bin/npm install --silent || exit $?
-fi
+}
 
-app_name=$(ctx node properties app_name)
-ctx logger info "Finished installing application ${app_name}"
+function download() {
+
+   url=$1
+   name=$2
+
+   if [ -f "`pwd`/${name}" ]; then
+        ctx logger info "`pwd`/${name} already exists, No need to download"
+   else
+       # download to given directory
+       ctx logger info "Downloading ${url} to `pwd`/${name}"
+
+       # -L handles Github redirects.
+       curl -L -o ${name} ${url}
+   fi
+}
+
+function untar() {
+
+    tar_archive=$1
+    inner_name=$2
+    destination=$3
+
+    if [ ! -d ${destination} ]; then
+        ctx logger info "Untaring ${tar_archive}"
+        tar -zxvf ${tar_archive} || exit $?
+
+        ctx logger info "Moving to ${destination}"
+        mv ${inner_name} ${destination} || exit $?
+    fi
+}
+
+install_curl
+
+set -e
+
+TEMP_DIR='/tmp'
+NODEJS_ROOT=$(ctx instance runtime_properties node_js_root)
+ORGANIZATION=$(ctx node properties organization)
+REPO_NAME=$(ctx node properties repo)
+BRANCH=$(ctx node properties branch)
+APPLICATION_URL="https://github.com/${ORGANIZATION}/${REPO_NAME}/archive/${BRANCH}.tar.gz"
+
+################################
+# Directory that will contain:
+#  - Nodecellar source
+################################
+NODECELLAR_ROOT_PATH=${TEMP_DIR}/$(ctx execution-id)/nodecellar
+mkdir -p ${NODECELLAR_ROOT_PATH}
+
+cd ${TEMP_DIR}
+download ${APPLICATION_URL} ${BRANCH}.tar.gz
+untar ${BRANCH}.tar.gz ${REPO_NAME}-${BRANCH} ${NODECELLAR_ROOT_PATH}/nodecellar-source
+
+cd ${NODECELLAR_ROOT_PATH}/nodecellar-source
+ctx logger info "Installing nodecellar dependencies using npm"
+${NODEJS_ROOT}/bin/npm install
+
+ctx instance runtime_properties nodecellar_source_path ${NODECELLAR_ROOT_PATH}/nodecellar-source
+
+ctx logger info "Sucessfully installed nodecellar"

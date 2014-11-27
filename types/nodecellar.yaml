@@ -19,37 +19,46 @@ node_types:
         type: integer
     interfaces:
       cloudify.interfaces.lifecycle:
-        create:
-          implementation: scripts/mongo/install-mongo.sh
-        start:
-          implementation: scripts/mongo/start-mongo.sh
-        stop:
-          implementation: scripts/mongo/stop-mongo.sh
+        create: scripts/mongo/install-mongo.sh
+        start: scripts/mongo/start-mongo.sh
+        stop: scripts/mongo/stop-mongo.sh
 
   cloudify.nodes.nodecellar.NodeJSServer:
     derived_from: cloudify.nodes.ApplicationServer
     interfaces:
       cloudify.interfaces.lifecycle:
-        create:
-          implementation: scripts/nodejs/install-nodejs.sh
+        create: scripts/nodejs/install-nodejs.sh
 
-  cloudify.nodes.nodecellar.NodecellarApplicationModule:
+  cloudify.nodes.nodecellar.GithubNodecellarApplicationModule:
     derived_from: cloudify.nodes.ApplicationModule
     properties:
-      application_url:
-        description: Web application archive url.
+      organization:
+        description: >
+          The Name of the organization the application repo belongs to.
         type: string
+        default: cloudify-cosmo
+      repo:
+        description: >
+          The Name of the repository containing the application sources.
+        type: string
+        default: nodecellar
+      branch:
+        description: >
+          The Name of the branch to be installed.
+        type: string
+        default: master
       port:
         description: Web application port
         type: integer
+      startup_script:
+        description: Web application port
+        type: string
+        default: server.js
     interfaces:
       cloudify.interfaces.lifecycle:
-        create:
-          implementation: scripts/nodecellar/install-nodecellar-app.sh
-        start:
-          implementation: scripts/nodecellar/start-nodecellar-app.sh
-        stop:
-          implementation: scripts/nodecellar/stop-nodecellar-app.sh
+        configure: scripts/nodecellar/install-nodecellar-app.sh
+        start: scripts/nodecellar/start-nodecellar-app.sh
+        stop: scripts/nodecellar/stop-nodecellar-app.sh
 
 relationships:
 
@@ -57,12 +66,11 @@ relationships:
     derived_from: cloudify.relationships.connected_to
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          postconfigure:
-              implementation: scripts/mongo/set-ip.sh
+          postconfigure: scripts/mongo/set-ip.sh
+
 
   nodecellar_application_contained_in_nodejs:
     derived_from: cloudify.relationships.contained_in
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          postconfigure:
-              implementation: scripts/nodejs/set-root.sh
+          preconfigure: scripts/nodejs/set-root.sh

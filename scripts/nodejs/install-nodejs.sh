@@ -6,9 +6,13 @@ function install_curl() {
     apt_get_cmd=$(which apt-get)
 
     if [[ ! -z ${yum_cmd} ]]; then
+        ctx logger info "Installing package: curl"
         sudo yum -y install curl || exit $?
+        ctx logger info "Succesfully installed package: curl"
     elif [[ ! -z ${apt_get_cmd} ]]; then
+        ctx logger info "Installing package: curl"
         sudo apt-get -qq install curl || exit $?
+        ctx logger info "Succesfully installed package: curl"
     else
         ctx logger error 'No package manager available to install package: curl'
         exit 1;
@@ -25,8 +29,8 @@ function download() {
         ctx logger info "`pwd`/${name} already exists, No need to download"
    else
        # download to given directory
-       ctx logger info "Downloading ${name} to `pwd`/${name}"
-       curl -O ${url}
+       ctx logger info "Downloading ${url} to `pwd`/${name}"
+       curl -o ${name} ${url}
    fi
 }
 
@@ -45,19 +49,26 @@ function untar() {
     fi
 }
 
+install_curl
+
+set -e
+
 TEMP_DIR='/tmp'
 NODEJS_TARBALL_NAME='node-v0.10.26-linux-x64.tar.gz'
 
+################################
+# Directory that will contain:
+#  - NodeJS binaries
+################################
 NODEJS_ROOT=${TEMP_DIR}/$(ctx execution-id)/nodejs
-ctx instance runtime_properties root ${NODEJS_ROOT}
+mkdir -p ${NODEJS_ROOT}
 
-mkdir -p ${NODEJS_ROOT} || exit $?
-
-cd ${NODEJS_ROOT} || exit $?
-
-install_curl
+cd ${TEMP_DIR}
 download http://nodejs.org/dist/v0.10.26/${NODEJS_TARBALL_NAME} ${NODEJS_TARBALL_NAME}
-untar node-v0.10.26-linux-x64.tar.gz node-v0.10.26-linux-x64 nodejs-binaries
+untar node-v0.10.26-linux-x64.tar.gz node-v0.10.26-linux-x64 ${NODEJS_ROOT}/nodejs-binaries
+
+# this runtime property is used by the start-nodecellar-app.sh
+ctx instance runtime_properties node_js_root ${NODEJS_ROOT}/nodejs-binaries
 
 ctx logger info "Sucessfully installed NodeJS"
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 function wait_for_server() {
 
     port=$1
@@ -7,10 +9,12 @@ function wait_for_server() {
 
     started=false
 
+    ctx logger info "Running ${server_name} liveness detection on port ${port}"
+
     for i in $(seq 1 120)
     do
         if wget http://localhost:${port} 2>/dev/null ; then
-            STARTED=true
+            started=true
             break
         else
             ctx logger info "${server_name} has not started. waiting..."
@@ -24,22 +28,20 @@ function wait_for_server() {
 
 }
 
-TEMP_DIR='/tmp'
 PID_FILE='/tmp/mongo.pid'
-
 PORT=$(ctx node properties port)
-MONGO_ROOT_PATH=$(ctx instance runtime_properties mongo_root_path)
-COMMAND="./mongodb/bin/mongod --port ${PORT} --dbpath data --rest --journal --shardsvr"
+MONGO_BINARIES_PATH=$(ctx instance runtime_properties mongo_binaries_path)
+MONGO_DATA_PATH=$(ctx instance runtime_properties mongo_data_path)
+COMMAND="${MONGO_BINARIES_PATH}/bin/mongod --port ${PORT} --dbpath ${MONGO_DATA_PATH} --rest --journal --shardsvr"
 
-cd ${MONGO_ROOT_PATH} || exit $?
-
-ctx logger info ${COMMAND}
-nohup ./mongodb/bin/mongod --port ${PORT} --dbpath data --rest --journal --shardsvr > /dev/null 2>&1 &
+ctx logger info "${COMMAND}"
+nohup ${COMMAND} > /dev/null 2>&1 &
 echo $! > ${PID_FILE}
 
-ctx logger info "Waiting for MongoDB to launch"
+MONGO_REST_PORT=`expr ${PORT} + 1000`
+wait_for_server ${MONGO_REST_PORT} 'MongoDB'
 
-REST_PORT=`expr ${port} + 1000`
-wait_for_server ${REST_PORT} 'MongoDB'
+# this runtime porperty is used by the stop-mongo script.
+ctx instance runtime_properties pid_file ${PID_FILE}
 
-ctx logger info "MongDB started sucessfully[pid=`cat ${PID_FILE}`"
+ctx logger info "Sucessfully started MongDB[pid=`cat ${PID_FILE}`]"

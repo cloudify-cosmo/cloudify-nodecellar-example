@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:  
   - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
-  - nodecellar-types.yaml
+  - types/nodecellar.yaml
 
 ################################################################
 # Blueprint inputs.
@@ -27,7 +27,7 @@ inputs:
 
 node_templates:
 
-  vm:
+  host:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: host_ip }
@@ -41,42 +41,31 @@ node_templates:
       role: mongod
       port: 27017
     relationships:
-      - target: vm
-        type: cloudify.relationships.contained_in
+      - type: cloudify.relationships.contained_in
+        target: host
 
   nodejs:
     type: cloudify.nodes.nodecellar.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: vm
+        target: host
 
-  nodecellar_app:
-    type: cloudify.nodes.nodecellar.NodeJSApplicationModule
+  nodecellar:
+    type: cloudify.nodes.nodecellar.GithubNodecellarApplicationModule
     properties:
-      application_url: https://github.com/cloudify-cosmo/nodecellar/archive/master.zip
       port: 8080
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        start:
-          inputs:
-            process:
-              description: A dictionary for process configuration.
-              default:
-                env:
-                  MONGO_PORT: { get_property: [mongod, port] }
-                  MONGO_HOST: { get_attribute: [mongod, ip_address] }
     relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs
-      - type: cloudify.relationships.connected_to
+      - type: nodecellar_application_connected_to_mongo
         target: mongod
+      - type: nodecellar_application_contained_in_nodejs
+        target: nodejs
 
 outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ vm, ip ] }
-      port: { get_property: [ nodecellar_app, base_port ] }
+      ip_address: { get_property: [ host, ip ] }
+      port: { get_property: [nodecellar, port] }
 
 
 

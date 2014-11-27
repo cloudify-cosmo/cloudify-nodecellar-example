@@ -1,0 +1,5 @@
+{
+    "host_ip": "192.168.11.127 ",
+    "agent_user": "vagrant",
+    "agent_private_key_path": "/home/vagrant/.ssh/agent_key.pem"
+}

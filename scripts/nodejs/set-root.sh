@@ -1,5 +1,5 @@
 #!/bin/bash
 
-root=$(ctx instance runtime_properties root)
+set -e
 
-ctx source instance runtime-properties node_js_root ${root}
+ctx source instance runtime-properties node_js_root $(ctx target instance runtime_properties node_js_root)

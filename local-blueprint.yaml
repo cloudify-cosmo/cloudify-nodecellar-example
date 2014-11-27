@@ -9,6 +9,7 @@ node_templates:
   host:
     type: cloudify.nodes.Compute
     properties:
+      ip: localhost
       install_agent: false
 
   mongod:
@@ -27,9 +28,8 @@ node_templates:
         target: host
 
   nodecellar:
-    type: cloudify.nodes.nodecellar.NodecellarApplicationModule
+    type: cloudify.nodes.nodecellar.GithubNodecellarApplicationModule
     properties:
-      application_url: https://github.com/cloudify-cosmo/nodecellar/archive/master.zip
       port: 8080
     relationships:
       - type: nodecellar_application_connected_to_mongo
@@ -43,6 +43,4 @@ outputs:
     value:
       ip_address: localhost
       port: { get_property: [nodecellar, port] }
-
-
 
