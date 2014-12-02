@@ -1,24 +1,6 @@
 #!/bin/bash
 
-function install_curl() {
-
-    yum_cmd=$(which yum)
-    apt_get_cmd=$(which apt-get)
-
-    if [[ ! -z ${yum_cmd} ]]; then
-        ctx logger info "Installing package: curl"
-        sudo yum -y install curl || exit $?
-        ctx logger info "Succesfully installed package: curl"
-    elif [[ ! -z ${apt_get_cmd} ]]; then
-        ctx logger info "Installing package: curl"
-        sudo apt-get -qq install curl || exit $?
-        ctx logger info "Succesfully installed package: curl"
-    else
-        ctx logger error 'No package manager available to install package: curl'
-        exit 1;
-    fi
-
-}
+set -e
 
 function download() {
 
@@ -28,55 +10,87 @@ function download() {
    if [ -f "`pwd`/${name}" ]; then
         ctx logger info "`pwd`/${name} already exists, No need to download"
    else
-       # download to given directory
-       ctx logger info "Downloading ${url} to `pwd`/${name}"
+        # download to given directory
+        ctx logger info "Downloading ${url} to `pwd`/${name}"
 
-       # -L handles Github redirects.
-       curl -L -o ${name} ${url}
+        set +e
+        curl_cmd=$(which curl)
+        wget_cmd=$(which wget)
+        set -e
+
+        if [[ ! -z ${curl_cmd} ]]; then
+            curl -L -o ${name} ${url}
+        elif [[ ! -z ${wget_cmd} ]]; then
+            wget -O ${name} ${url}
+        else
+            ctx logger error "Failed to download ${url}: Neither 'cURL' nor 'wget' were found on the system"
+            exit 1;
+        fi
    fi
+
 }
 
-function untar() {
+function extract() {
 
-    tar_archive=$1
-    inner_name=$2
-    destination=$3
+    archive=$1
+    destination=$2
 
     if [ ! -d ${destination} ]; then
-        ctx logger info "Untaring ${tar_archive}"
-        tar -zxvf ${tar_archive} || exit $?
 
-        ctx logger info "Moving to ${destination}"
-        mv ${inner_name} ${destination} || exit $?
+        if [[ ${archive} == *".zip"* ]]; then
+
+            set +e
+            unzip_cmd=$(which unzip)
+            set -e
+
+            if [[ -z ${unzip_cmd} ]]; then
+                ctx logger error "Cannot extract ${archive}: 'unzip' command not found"
+                exit 1
+            fi
+            inner_name=$(unzip -qql "${archive}" | sed -r '1 {s/([ ]+[^ ]+){3}\s+//;q}')
+            ctx logger info "Unzipping ${archive}"
+            unzip ${archive}
+
+            ctx logger info "Moving ${inner_name} to ${destination}"
+            mv ${inner_name} ${destination}
+
+        else
+
+            # assuming tarball if the archive is not a zip.
+            # we dont check that tar exists since if we made it
+            # this far, it definitely exists (nodejs used it)
+            inner_name=$(tar -tf "${archive}" | grep -o '^[^/]\+' | sort -u)
+            ctx logger info "Untaring ${archive}"
+            tar -zxvf ${archive}
+
+            ctx logger info "Moving ${inner_name} to ${destination}"
+            mv ${inner_name} ${destination}
+
+        fi
     fi
 }
 
-install_curl
-
-set -e
-
 TEMP_DIR='/tmp'
-NODEJS_ROOT=$(ctx instance runtime_properties node_js_root)
-ORGANIZATION=$(ctx node properties organization)
-REPO_NAME=$(ctx node properties repo)
-BRANCH=$(ctx node properties branch)
-APPLICATION_URL="https://github.com/${ORGANIZATION}/${REPO_NAME}/archive/${BRANCH}.tar.gz"
+NODEJS_BINARIES_PATH=$(ctx instance runtime_properties nodejs_binaries_path)
+APPLICATION_URL=$(ctx node properties application_url)
+NODECELLAR_ARCHIVE_NAME='nodecellar_application.archive'
 
 ################################
 # Directory that will contain:
 #  - Nodecellar source
 ################################
 NODECELLAR_ROOT_PATH=${TEMP_DIR}/$(ctx execution-id)/nodecellar
+NODECELLAR_SOURCE_PATH=${NODECELLAR_ROOT_PATH}/nodecellar-source
 mkdir -p ${NODECELLAR_ROOT_PATH}
 
 cd ${TEMP_DIR}
-download ${APPLICATION_URL} ${BRANCH}.tar.gz
-untar ${BRANCH}.tar.gz ${REPO_NAME}-${BRANCH} ${NODECELLAR_ROOT_PATH}/nodecellar-source
+download ${APPLICATION_URL} ${NODECELLAR_ARCHIVE_NAME}
+extract ${NODECELLAR_ARCHIVE_NAME} ${NODECELLAR_SOURCE_PATH}
 
-cd ${NODECELLAR_ROOT_PATH}/nodecellar-source
+cd ${NODECELLAR_SOURCE_PATH}
 ctx logger info "Installing nodecellar dependencies using npm"
-${NODEJS_ROOT}/bin/npm install
+${NODEJS_BINARIES_PATH}/bin/npm install
 
-ctx instance runtime_properties nodecellar_source_path ${NODECELLAR_ROOT_PATH}/nodecellar-source
+ctx instance runtime_properties nodecellar_source_path ${NODECELLAR_SOURCE_PATH}
 
 ctx logger info "Sucessfully installed nodecellar"

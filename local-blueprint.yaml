@@ -13,22 +13,21 @@ node_templates:
       install_agent: false
 
   mongod:
-    type: cloudify.nodes.nodecellar.MongoDatabase
+    type: cloudify.nodecellar.nodes.MongoDatabase
     properties:
-      role: mongod
       port: 27017
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
 
   nodejs:
-    type: cloudify.nodes.nodecellar.NodeJSServer
+    type: cloudify.nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
 
   nodecellar:
-    type: cloudify.nodes.nodecellar.GithubNodecellarApplicationModule
+    type: cloudify.nodecellar.nodes.NodecellarApplicationModule
     properties:
       port: 8080
     relationships:
@@ -43,4 +42,3 @@ outputs:
     value:
       ip_address: localhost
       port: { get_property: [nodecellar, port] }
-

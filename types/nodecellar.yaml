@@ -8,12 +8,17 @@
 
 node_types:
 
-  cloudify.nodes.nodecellar.MongoDatabase:
+  ###########################################################
+  # Mongo Database.
+  #
+  # Used a the data backend for the nodecellar application.
+  # configurable properties:
+  #   - port
+  ###########################################################
+
+  cloudify.nodecellar.nodes.MongoDatabase:
     derived_from: cloudify.nodes.DBMS
     properties:
-      role:
-        description: MongoDB role
-        type: string
       port:
         description: MongoDB port
         type: integer
@@ -23,35 +28,46 @@ node_types:
         start: scripts/mongo/start-mongo.sh
         stop: scripts/mongo/stop-mongo.sh
 
-  cloudify.nodes.nodecellar.NodeJSServer:
+
+  ###########################################################
+  # NodeJS Server.
+  #
+  # Used to host the nodecellar application module.
+  ###########################################################
+
+  cloudify.nodecellar.nodes.NodeJSServer:
     derived_from: cloudify.nodes.ApplicationServer
     interfaces:
       cloudify.interfaces.lifecycle:
         create: scripts/nodejs/install-nodejs.sh
 
-  cloudify.nodes.nodecellar.GithubNodecellarApplicationModule:
+
+  ###########################################################
+  # Nodecellar application.
+  #
+  # This is the actual application source files.
+  # configurable properties:
+  #   - port
+  #   - application url
+  #   - startup script
+  ###########################################################
+
+  cloudify.nodecellar.nodes.NodecellarApplicationModule:
     derived_from: cloudify.nodes.ApplicationModule
     properties:
-      organization:
-        description: >
-          The Name of the organization the application repo belongs to.
-        type: string
-        default: cloudify-cosmo
-      repo:
-        description: >
-          The Name of the repository containing the application sources.
-        type: string
-        default: nodecellar
-      branch:
-        description: >
-          The Name of the branch to be installed.
-        type: string
-        default: master
       port:
         description: Web application port
         type: integer
+      application_url:
+        description: >
+          URL to an archive containing the application source.
+          The archive must contain one top level directory.
+        default: https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz
       startup_script:
-        description: Web application port
+        description: >
+          This script will be used to start the nodejs application.
+          The path is relative to the top level single directory inside
+          the archive
         type: string
         default: server.js
     interfaces:
@@ -60,17 +76,42 @@ node_types:
         start: scripts/nodecellar/start-nodecellar-app.sh
         stop: scripts/nodecellar/stop-nodecellar-app.sh
 
+
+################################################################
+# Blueprint relationships.
+#
+# specific new relationships for the nodecellar app.
+# these relationships are mapped to scripts that are resposible
+# for the relationship operation.
+################################################################
+
 relationships:
 
-  nodecellar_application_connected_to_mongo:
+  ###########################################################
+  # This relationship is responsible for setting the mongo
+  # host ip on the source node as a runtime property.
+  #
+  # This will enable the source node to locate the mongo
+  # database.
+  ###########################################################
+
+  node_connected_to_mongo:
     derived_from: cloudify.relationships.connected_to
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          postconfigure: scripts/mongo/set-ip.sh
+        postconfigure: scripts/mongo/set-mongo-url.sh
 
 
-  nodecellar_application_contained_in_nodejs:
+  ###########################################################
+  # This relationship is responsible for setting the nodejs
+  # location on the source node.
+  #
+  # This will enable the source node to locate nodejs and
+  # use it to install depenencies with npm
+  ###########################################################
+
+  node_contained_in_nodejs:
     derived_from: cloudify.relationships.contained_in
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-          preconfigure: scripts/nodejs/set-root.sh
+        preconfigure: scripts/nodejs/set-nodejs-root.sh

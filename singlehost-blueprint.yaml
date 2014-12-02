@@ -2,6 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:  
   - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
 ################################################################
@@ -12,18 +13,18 @@ imports:
 ################################################################
 inputs:
 
-    host_ip:
-        description: >
-          The ip of the host the application will be deployed on  
+  host_ip:
+      description: >
+        The ip of the host the application will be deployed on
 
-    agent_user:
-        description: >
-          User name used when SSH-ing into the started machine
+  agent_user:
+      description: >
+        User name used when SSH-ing into the started machine
 
-    agent_private_key_path:
-        description: >
-          Path to a private key that resided on the management machine.
-          SSH-ing into agent machines will be done with this key.
+  agent_private_key_path:
+      description: >
+        Path to a private key that resided on the management machine.
+        SSH-ing into agent machines will be done with this key.
 
 node_templates:
 
@@ -34,30 +35,62 @@ node_templates:
       cloudify_agent:
         user: { get_input: agent_user }
         key: { get_input: agent_private_key_path }
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector: {}
 
   mongod:
-    type: cloudify.nodes.nodecellar.MongoDatabase
+    type: cloudify.nodecellar.nodes.MongoDatabase
     properties:
-      role: mongod
       port: 27017
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure: scripts/mongo/install-pymongo.sh
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
 
   nodejs:
-    type: cloudify.nodes.nodecellar.NodeJSServer
+    type: cloudify.nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
 
   nodecellar:
-    type: cloudify.nodes.nodecellar.GithubNodecellarApplicationModule
+    type: cloudify.nodecellar.nodes.NodecellarApplicationModule
     properties:
       port: 8080
     relationships:
-      - type: nodecellar_application_connected_to_mongo
+      - type: node_connected_to_mongo
         target: mongod
-      - type: nodecellar_application_contained_in_nodejs
+      - type: node_contained_in_nodejs
         target: nodejs
 
 outputs:
@@ -66,6 +99,4 @@ outputs:
     value:
       ip_address: { get_property: [ host, ip ] }
       port: { get_property: [nodecellar, port] }
-
-
 
