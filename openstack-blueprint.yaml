@@ -23,7 +23,7 @@ inputs:
 
 node_templates:
 
-  mongod_host:
+  mongod_vm:
     type: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
@@ -56,7 +56,7 @@ node_templates:
         type: cloudify.openstack.server_connected_to_security_group
 
 
-  nodejs_host:
+  nodejs_vm:
     type: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
@@ -74,9 +74,6 @@ node_templates:
     type: cloudify.nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
     interfaces:
       cloudify.interfaces.lifecycle:
         configure: scripts/mongo/install-pymongo.sh
@@ -90,13 +87,13 @@ node_templates:
                     hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
-        target: mongod_host
+        target: mongod_vm
 
   nodejs:
     type: cloudify.nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: nodejs_host
+        target: nodejs_vm
 
   nodecellar:
     type: cloudify.nodecellar.nodes.NodecellarApplicationModule
@@ -135,5 +132,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, ip ] }
+      ip_address: { get_attribute: [ nodejs_vm, ip ] }
       port: { get_property: [ nodecellar, port ] }

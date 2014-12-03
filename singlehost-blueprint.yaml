@@ -28,7 +28,7 @@ inputs:
 
 node_templates:
 
-  host:
+  vm:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: host_ip }
@@ -59,9 +59,6 @@ node_templates:
     type: cloudify.nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
     interfaces:
       cloudify.interfaces.lifecycle:
         configure: scripts/mongo/install-pymongo.sh
@@ -75,13 +72,13 @@ node_templates:
                     hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: vm
 
   nodejs:
     type: cloudify.nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: vm
 
   nodecellar:
     type: cloudify.nodecellar.nodes.NodecellarApplicationModule
@@ -97,6 +94,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ host, ip ] }
+      ip_address: { get_property: [ vm, ip ] }
       port: { get_property: [nodecellar, port] }
 
