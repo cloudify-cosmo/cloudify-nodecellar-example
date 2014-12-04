@@ -1,3 +1,9 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on an openstack cloud environment with nova network
+# (as opposed to neutron network
+###########################################################
+
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
@@ -5,6 +11,12 @@ imports:
   - http://www.getcloudify.org/spec/openstack-plugin/1.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
+
+###########################################################
+# Inputs section allows the user to use same
+# blueprint several times, with different paramters for
+# each time.
+###########################################################
 
 inputs:
 
@@ -20,23 +32,36 @@ inputs:
     description: >
       User for connecting to agent VM's
 
-node_templates:
+node_types:
 
-  mongod_vm:
-    type: cloudify.openstack.nodes.Server
+  ###########################################################
+  # We define a type that inherits openstack's default
+  # server, and adds monitoring capabillities on top of it.
+  #
+  # We are infact telling cloudify to install a diamond
+  # monitoring agent and adding a few built-in collectors.
+  #
+  # (see https://github.com/BrightcoveOS/Diamond)
+  ###########################################################
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
-        user: { get_input: agent_user }
+        default:
+          user: { get_input: agent_user }
       server:
-        image: { get_input: image }
-        flavor: { get_input: flavor }
+        default:
+          image: { get_input: image }
+          flavor: { get_input: flavor }
     interfaces:
       cloudify.interfaces.monitoring_agent:
           install:
             implementation: diamond.diamond_agent.tasks.install
             inputs:
               diamond_config:
-                interval: 1
+                default:
+                  interval: 1
           start: diamond.diamond_agent.tasks.start
           stop: diamond.diamond_agent.tasks.stop
           uninstall: diamond.diamond_agent.tasks.uninstall
@@ -45,47 +70,37 @@ node_templates:
             implementation: diamond.diamond_agent.tasks.add_collectors
             inputs:
               collectors_config:
-                CPUCollector: {}
-                MemoryCollector: {}
-                LoadAverageCollector: {}
-                DiskUsageCollector: {}
+                default:
+                  CPUCollector: {}
+                  MemoryCollector: {}
+                  LoadAverageCollector: {}
+                  DiskUsageCollector: {}
+
+node_templates:
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
     relationships:
       - target: mongod_security_group
         type: cloudify.openstack.server_connected_to_security_group
 
-
-  nodejs_vm:
-    type: cloudify.openstack.nodes.Server
-    properties:
-      cloudify_agent:
-        user: { get_input: agent_user }
-      server:
-        image: { get_input: image }
-        flavor: { get_input: flavor }
-    interfaces:
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                interval: 1
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                CPUCollector: {}
-                MemoryCollector: {}
-                LoadAverageCollector: {}
-                DiskUsageCollector: {}
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
     relationships:
-      - target: floatingip
+      - target: nodecellar_floatingip
         type: cloudify.openstack.server_connected_to_floating_ip
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
+
+  ###########################################################
+  # Notice that this node defines an additional collector
+  # to collect data on the MongoDB.
+  #
+  # The MongoDBCollector depends on a python library called
+  # pymongo. We install this library in the 'configure'
+  # lifecycle hook of this node.
+  # see 'scripts/mongo/install-pymongo.sh'
+  ###########################################################
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -104,13 +119,13 @@ node_templates:
                     hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
-        target: mongod_vm
+        target: mongod_host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: nodejs_vm
+        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
@@ -122,6 +137,13 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+
   nodecellar_security_group:
     type: cloudify.openstack.nova_net.nodes.SecurityGroup
     properties:
@@ -130,6 +152,15 @@ node_templates:
       rules:
         - cidr: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
+  # A security group to enable access to the mongo host
+  # using the port of the mongo node.
+  #
+  # We need this so that the nodecellar application can
+  # comminicate with MongoDB, since they are running on
+  # different hosts.
+  ###########################################################
 
   mongod_security_group:
     type: cloudify.openstack.nova_net.nodes.SecurityGroup
@@ -142,12 +173,24 @@ node_templates:
         - cidr: 0.0.0.0/0
           port: 28017
 
-  floatingip:
+  ###########################################################
+  # A floating ip to be attached to the nodejs host, since
+  # eventually we want to be able to access it
+  # from any machine, on any network.
+  ###########################################################
+
+  nodecellar_floatingip:
     type: cloudify.openstack.nova_net.nodes.FloatingIP
+
+###########################################################
+# This Outpus section exposes the application endpoint.
+# You can access it by running
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
 
 outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_vm, ip ] }
+      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }

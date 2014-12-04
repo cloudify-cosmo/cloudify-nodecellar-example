@@ -23,7 +23,7 @@ function download() {
         elif [[ ! -z ${wget_cmd} ]]; then
             wget -O ${name} ${url}
         else
-            ctx logger error "Failed to download ${url}: Neither cURL or Wget were found on the system"
+            ctx logger error "Failed to download ${url}: Neither 'cURL' nor 'wget' were found on the system"
             exit 1;
         fi
    fi

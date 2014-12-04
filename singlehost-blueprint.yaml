@@ -1,3 +1,8 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on an existing host.
+###########################################################
+
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:  
@@ -5,12 +10,12 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
-################################################################
-# Blueprint inputs.
-# 
-# The values are provided via the inputs.json file.
-# passed when creating the deployment (-i inputs.json).
-################################################################
+###########################################################
+# Inputs section allows the user to use same
+# blueprint several times, with different paramters for
+# each time.
+###########################################################
+
 inputs:
 
   host_ip:
@@ -28,7 +33,14 @@ inputs:
 
 node_templates:
 
-  hosting_vm:
+  ###########################################################
+  # We are infact telling cloudify to install a diamond
+  # monitoring agent and adding a few built-in collectors.
+  #
+  # (see https://github.com/BrightcoveOS/Diamond)
+  ###########################################################
+
+  host:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: host_ip }
@@ -89,6 +101,12 @@ node_templates:
         target: mongod
       - type: node_contained_in_nodejs
         target: nodejs
+
+###########################################################
+# This Outpus section exposes the application endpoint.
+# You can access it by running
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
 
 outputs:
   endpoint:

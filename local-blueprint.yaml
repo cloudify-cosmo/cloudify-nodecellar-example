@@ -6,7 +6,7 @@ imports:
 
 node_templates:
 
-  vm:
+  host:
     type: cloudify.nodes.Compute
     properties:
       ip: localhost
@@ -18,13 +18,13 @@ node_templates:
       port: 27017
     relationships:
       - type: cloudify.relationships.contained_in
-        target: vm
+        target: host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: vm
+        target: host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
