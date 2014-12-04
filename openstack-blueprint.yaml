@@ -23,7 +23,7 @@ inputs:
 
 node_templates:
 
-  mongod_vm:
+  mongod_host:
     type: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
@@ -50,13 +50,12 @@ node_templates:
                 MemoryCollector: {}
                 LoadAverageCollector: {}
                 DiskUsageCollector: {}
-
     relationships:
       - target: mongod_security_group
         type: cloudify.openstack.server_connected_to_security_group
 
 
-  nodejs_vm:
+  nodejs_host:
     type: cloudify.openstack.nodes.Server
     properties:
       cloudify_agent:
@@ -64,6 +63,25 @@ node_templates:
       server:
         image: { get_input: image }
         flavor: { get_input: flavor }
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector: {}
     relationships:
       - target: floatingip
         type: cloudify.openstack.server_connected_to_floating_ip
@@ -87,13 +105,13 @@ node_templates:
                     hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
-        target: mongod_vm
+        target: mongod_host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: nodejs_vm
+        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
@@ -132,5 +150,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_vm, ip ] }
+      ip_address: { get_attribute: [ nodejs_host, ip ] }
       port: { get_property: [ nodecellar, port ] }

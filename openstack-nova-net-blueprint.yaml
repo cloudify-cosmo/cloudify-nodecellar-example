@@ -6,7 +6,6 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
-
 inputs:
 
   image:
@@ -50,7 +49,6 @@ node_templates:
                 MemoryCollector: {}
                 LoadAverageCollector: {}
                 DiskUsageCollector: {}
-
     relationships:
       - target: mongod_security_group
         type: cloudify.openstack.server_connected_to_security_group
@@ -64,6 +62,25 @@ node_templates:
       server:
         image: { get_input: image }
         flavor: { get_input: flavor }
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector: {}
     relationships:
       - target: floatingip
         type: cloudify.openstack.server_connected_to_floating_ip
