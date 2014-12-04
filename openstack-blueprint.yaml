@@ -6,7 +6,6 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
-
 inputs:
 
   image:
