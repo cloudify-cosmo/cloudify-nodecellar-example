@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.1rc2/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.1rc2/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
@@ -71,7 +71,7 @@ node_templates:
         type: cloudify.openstack.server_connected_to_security_group
 
   mongod:
-    type: cloudify.nodecellar.nodes.MongoDatabase
+    type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
     interfaces:
@@ -90,13 +90,13 @@ node_templates:
         target: mongod_vm
 
   nodejs:
-    type: cloudify.nodecellar.nodes.NodeJSServer
+    type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs_vm
 
   nodecellar:
-    type: cloudify.nodecellar.nodes.NodecellarApplicationModule
+    type: nodecellar.nodes.NodecellarApplicationModule
     properties:
       port: 8080
     relationships:

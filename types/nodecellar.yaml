@@ -16,7 +16,7 @@ node_types:
   #   - port
   ###########################################################
 
-  cloudify.nodecellar.nodes.MongoDatabase:
+  nodecellar.nodes.MongoDatabase:
     derived_from: cloudify.nodes.DBMS
     properties:
       port:
@@ -35,7 +35,7 @@ node_types:
   # Used to host the nodecellar application module.
   ###########################################################
 
-  cloudify.nodecellar.nodes.NodeJSServer:
+  nodecellar.nodes.NodeJSServer:
     derived_from: cloudify.nodes.ApplicationServer
     interfaces:
       cloudify.interfaces.lifecycle:
@@ -52,7 +52,7 @@ node_types:
   #   - startup script
   ###########################################################
 
-  cloudify.nodecellar.nodes.NodecellarApplicationModule:
+  nodecellar.nodes.NodecellarApplicationModule:
     derived_from: cloudify.nodes.ApplicationModule
     properties:
       port:

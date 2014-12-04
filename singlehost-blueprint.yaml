@@ -1,7 +1,7 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:  
-  - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
@@ -28,7 +28,7 @@ inputs:
 
 node_templates:
 
-  vm:
+  hosting_vm:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: host_ip }
@@ -56,7 +56,7 @@ node_templates:
                 DiskUsageCollector: {}
 
   mongod:
-    type: cloudify.nodecellar.nodes.MongoDatabase
+    type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
     interfaces:
@@ -75,13 +75,13 @@ node_templates:
         target: vm
 
   nodejs:
-    type: cloudify.nodecellar.nodes.NodeJSServer
+    type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
         target: vm
 
   nodecellar:
-    type: cloudify.nodecellar.nodes.NodecellarApplicationModule
+    type: nodecellar.nodes.NodecellarApplicationModule
     properties:
       port: 8080
     relationships:

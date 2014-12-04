@@ -1,79 +1,125 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.1rc2/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.1rc2/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
+  - types/nodecellar.yaml
 
-node_types:
-  vm_host:
-    derived_from: cloudify.openstack.nodes.Server
-    properties:
-      cloudify_agent:
-        default:
-          user: ubuntu
-      server:
-        default:
-          ### if defined, will serve as the hostname for the started instance,
-          ### otherwise, the node_id will be used
-          #name: no_name            ### HOST_NAME""
-          image:      75d47d10-fef8-473b-9dd1-fe2f7649cb41   ### IMAGE_NAME
-          flavor:     101 ### FLAVOR_NAME
 
-  mongo_database:
-    derived_from: cloudify.nodes.DBMS
-    properties:
-      role:
-        description: MongoDB role
-      port:
-        description: MongoDB port
+inputs:
 
-  nodejs_server:
-    derived_from: cloudify.nodes.ApplicationServer
+  image:
+    description: >
+      Image to be used when launching agent VM's
 
-  nodejs_app:
-    derived_from: cloudify.nodes.ApplicationModule
-    properties:
-      app_name:
-        description: Application name
-        type: string
-      startup_script:
-        description: Nodejs startup script
-        type: string
-      git_url:
-        description: Web application git url
-        type: string
-      git_branch:
-        description: git branch
-        type: string
-      base_port:
-        description: Web application port
-        type: integer
-      num_instances:
-        description: Number of instances
-        type: integer
-      env_file_path:
-          type: string
-          default: ''
+  flavor:
+    description: >
+      Flavor of the agent VM's
 
-relationships:
-  nodecellar_connected_to_mongo:
-    derived_from: cloudify.relationships.connected_to
-    source_interfaces:
-      cloudify.interfaces.relationship_lifecycle:
-          postconfigure:
-              implementation: nodecellar-scripts/postconfigure.py
-              inputs: {}
-
+  agent_user:
+    description: >
+      User for connecting to agent VM's
 
 node_templates:
-  node_cellar_security_group:
+
+  mongod_vm:
+    type: cloudify.openstack.nodes.Server
+    properties:
+      cloudify_agent:
+        user: { get_input: agent_user }
+      server:
+        image: { get_input: image }
+        flavor: { get_input: flavor }
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector: {}
+
+    relationships:
+      - target: mongod_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
+
+  nodejs_vm:
+    type: cloudify.openstack.nodes.Server
+    properties:
+      cloudify_agent:
+        user: { get_input: agent_user }
+      server:
+        image: { get_input: image }
+        flavor: { get_input: flavor }
+    relationships:
+      - target: floatingip
+        type: cloudify.openstack.server_connected_to_floating_ip
+      - target: nodecellar_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure: scripts/mongo/install-pymongo.sh
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_vm
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_vm
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+      - type: node_connected_to_mongo
+        target: mongod
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  nodecellar_security_group:
     type: cloudify.openstack.nova_net.nodes.SecurityGroup
     properties:
-      resource_id: node_cellar_security_group
+      resource_id: nodecellar_security_group
       description: Nodecellar security group
       rules:
         - cidr: 0.0.0.0/0
-          port: { get_property: [ nodecellar_app, base_port ] }
+          port: { get_property: [ nodecellar, port ] }
+
+  mongod_security_group:
+    type: cloudify.openstack.nova_net.nodes.SecurityGroup
+    properties:
+      resource_id: mongod_security_group
+      description: MongoDB security group
+      rules:
         - cidr: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
         - cidr: 0.0.0.0/0
@@ -82,70 +128,9 @@ node_templates:
   floatingip:
     type: cloudify.openstack.nova_net.nodes.FloatingIP
 
-  mongod_vm:
-    type: vm_host
-    instances:
-      deploy: 1
-    relationships:
-      - target: node_cellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
-
-  nodejs_vm:
-    type: vm_host
-    instances:
-      deploy: 1
-    relationships:
-      - target: floatingip
-        type: cloudify.openstack.server_connected_to_floating_ip
-      - target: node_cellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
-
-  mongod:
-    type: mongo_database
-    properties:
-      role: mongod
-      port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: mongo-scripts/install-mongo.sh
-        start: mongo-scripts/start-mongo.sh
-        stop: mongo-scripts/stop-mongo.sh
-    relationships:
-      - target: mongod_vm
-        type: cloudify.relationships.contained_in
-
-  nodejs:
-    type: nodejs_server
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-nodejs.sh
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_vm
-
-  nodecellar_app:
-    type: nodejs_app
-    properties:
-      app_name: nodecellar
-      startup_script: server.js
-      git_url: https://github.com/cloudify-cosmo/nodecellar.git
-      git_branch: master
-      base_port: 8080
-      num_instances: 1
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-app.sh
-        start: nodejs-scripts/start-app.sh
-        stop: nodejs-scripts/stop-app.sh
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs
-      - type: nodecellar_connected_to_mongo
-        target: mongod
-
 outputs:
   endpoint:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodejs_vm, ip ] }
-      port: { get_property: [ nodecellar_app, base_port ] }
+      port: { get_property: [ nodecellar, port ] }

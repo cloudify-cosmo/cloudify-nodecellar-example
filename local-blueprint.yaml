@@ -13,7 +13,7 @@ node_templates:
       install_agent: false
 
   mongod:
-    type: cloudify.nodecellar.nodes.MongoDatabase
+    type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
     relationships:
@@ -21,19 +21,19 @@ node_templates:
         target: vm
 
   nodejs:
-    type: cloudify.nodecellar.nodes.NodeJSServer
+    type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
         target: vm
 
   nodecellar:
-    type: cloudify.nodecellar.nodes.NodecellarApplicationModule
+    type: nodecellar.nodes.NodecellarApplicationModule
     properties:
       port: 8080
     relationships:
-      - type: nodecellar_application_connected_to_mongo
+      - type: node_connected_to_mongo
         target: mongod
-      - type: nodecellar_application_contained_in_nodejs
+      - type: node_contained_in_nodejs
         target: nodejs
 
 outputs:
