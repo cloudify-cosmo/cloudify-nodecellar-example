@@ -12,6 +12,11 @@ install:
 
 script:
     - cfy init
-    - cfy local init -p blueprints/local-blueprint.yaml
+    - cfy blueprints validate -p local-blueprint.yaml
+    - cfy blueprints validate -p ec2-blueprint.yaml
+    - cfy blueprints validate -p openstack-blueprint.yaml
+    - cfy blueprints validate -p openstack-nova-net-blueprint-blueprint.yaml
+    - cfy blueprints validate -p singlehost-blueprint.yaml
+    - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
-    
+
