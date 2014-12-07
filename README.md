@@ -108,6 +108,8 @@ Once the workflow execution is complete, we can view the application endpoint by
 
 `cfy deployments outputs -d <deployment_id>`
 
+Hit that URL to see the application running.
+
 ### Step 6: Uninstall
 
 Now lets run the `uninstall` workflow. This will uninstall the application,
