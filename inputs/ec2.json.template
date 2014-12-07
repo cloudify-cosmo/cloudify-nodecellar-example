@@ -1,5 +1,5 @@
 {
-    "image": "ami-a73264ce",
-    "size": "m1.medium",
-    "agent_user": "ubuntu"
+    "image": "",
+    "size": "",
+    "agent_user": ""
 }

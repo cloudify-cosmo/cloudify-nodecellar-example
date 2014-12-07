@@ -85,6 +85,7 @@ node_types:
                   MemoryCollector: {}
                   LoadAverageCollector: {}
                   DiskUsageCollector: {}
+                  NetworkCollector: {}
 
 node_templates:
 

@@ -77,6 +77,14 @@ Great, now that you have your very own Cloudify Manager, we can work with these 
 ### Step 3: Create a deployment
 
 Every one of these blueprints have inputs, which can be populated for a deployment using the input files. <br>
+The input files are located under the inputs directory. <br>
+All of them contain the following:
+
+- `image` - Image identifier for the agent VM's
+- `flavor/size` - Flavor (Openstack) or Size (EC2) of the VM's
+- `agent_user` - Since the user name of a VM may depend on the image, specify here the user name for your image.
+
+After you entered all of these values, run: <br>
 
 `cfy deployments create -b <blueprint_id> -d <choose_deployment_id> -i inputs/<inputs_filename>`
 
