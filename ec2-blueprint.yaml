@@ -189,11 +189,11 @@ node_templates:
   nodecellar_security_group:
     type: cloudify.libcloud.nodes.SecurityGroup
     properties:
-      resource_id: nodecellar_security_group
-      description: Nodecellar security group
+      security_group:
+        name: nodecellar_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
+          port: { get_property: [ nodecellar_app, base_port ] }
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -207,8 +207,8 @@ node_templates:
   mongod_security_group:
     type: cloudify.libcloud.nodes.SecurityGroup
     properties:
-      resource_id: mongod_security_group
-      description: MongoDB security group
+      security_group:
+        name: mongod_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
