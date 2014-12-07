@@ -95,7 +95,7 @@ node_templates:
     properties:
       server:
         image_name: { get_input: image }
-        size_name: { get_input: size_name }
+        size_name: { get_input: size }
 
         ###########################################################
         # Attaching the mongo security group to the mongo host
@@ -108,7 +108,7 @@ node_templates:
     properties:
       server:
         image_name: { get_input: image }
-        size_name: { get_input: size_name }
+        size_name: { get_input: size }
 
         ###########################################################
         # Attaching the nodecellar security group to
