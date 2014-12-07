@@ -12,11 +12,13 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
   - types/nodecellar.yaml
 
-###########################################################
-# Inputs section allows the user to use same
-# blueprint several times, with different paramters for
-# each time.
-###########################################################
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
 
 inputs:
 
@@ -37,11 +39,6 @@ node_types:
   ###########################################################
   # We define a type that inherits openstack's default
   # server, and adds monitoring capabillities on top of it.
-  #
-  # We are infact telling cloudify to install a diamond
-  # monitoring agent and adding a few built-in collectors.
-  #
-  # (see https://github.com/BrightcoveOS/Diamond)
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
@@ -55,6 +52,14 @@ node_types:
           image: { get_input: image }
           flavor: { get_input: flavor }
     interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
       cloudify.interfaces.monitoring_agent:
           install:
             implementation: diamond.diamond_agent.tasks.install
@@ -65,6 +70,11 @@ node_types:
           start: diamond.diamond_agent.tasks.start
           stop: diamond.diamond_agent.tasks.stop
           uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ##########################
+      # Adding some collectors
+      ##########################
+
       cloudify.interfaces.monitoring:
           start:
             implementation: diamond.diamond_agent.tasks.add_collectors
@@ -81,26 +91,32 @@ node_templates:
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
+
+      ###########################################################
+      # Attaching the mongo security group to the mongo host
+      ###########################################################
+
       - target: mongod_security_group
         type: cloudify.openstack.server_connected_to_security_group
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
+
+      ###########################################################
+      # Attaching a floating ip to the nodejs host
+      ###########################################################
+
       - target: nodecellar_floatingip
         type: cloudify.openstack.server_connected_to_floating_ip
+
+      ###########################################################
+      # Attaching the nodecellar security group to
+      # the nodecellar host
+      ###########################################################
+
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
-
-  ###########################################################
-  # Notice that this node defines an additional collector
-  # to collect data on the MongoDB.
-  #
-  # The MongoDBCollector depends on a python library called
-  # pymongo. We install this library in the 'configure'
-  # lifecycle hook of this node.
-  # see 'scripts/mongo/install-pymongo.sh'
-  ###########################################################
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -108,7 +124,20 @@ node_templates:
       port: 27017
     interfaces:
       cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
         configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
       cloudify.interfaces.monitoring:
           start:
             implementation: diamond.diamond_agent.tasks.add_collectors
@@ -132,8 +161,18 @@ node_templates:
     properties:
       port: 8080
     relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
       - type: node_connected_to_mongo
         target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
       - type: node_contained_in_nodejs
         target: nodejs
 
@@ -183,8 +222,8 @@ node_templates:
     type: cloudify.openstack.nova_net.nodes.FloatingIP
 
 ###########################################################
-# This Outpus section exposes the application endpoint.
-# You can access it by running
+# This outpus section exposes the application endpoint.
+# You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
 

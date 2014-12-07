@@ -63,9 +63,8 @@ cd ${TEMP_DIR}
 download http://downloads.mongodb.org/linux/${MONGO_TARBALL_NAME} ${MONGO_TARBALL_NAME}
 untar ${MONGO_TARBALL_NAME} ${MONGO_ROOT_PATH}/mongodb-binaries
 
-cd ${MONGO_ROOT_PATH}
-ctx logger info "Creating MongoDB data directory --> `pwd`/data"
-mkdir -p data
+ctx logger info "Creating MongoDB data directory in ${MONGO_DATA_PATH}"
+mkdir -p ${MONGO_DATA_PATH}
 
 # these runtime properties are used by the start-mongo script.
 ctx instance runtime-properties mongo_root_path ${MONGO_ROOT_PATH}

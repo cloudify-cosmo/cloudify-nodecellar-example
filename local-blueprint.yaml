@@ -1,7 +1,12 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on a local machine.
+###########################################################
+
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:  
-  - http://www.getcloudify.org/spec/cloudify/3.1rc1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
   - types/nodecellar.yaml
 
 node_templates:
@@ -31,10 +36,26 @@ node_templates:
     properties:
       port: 8080
     relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
       - type: node_connected_to_mongo
         target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
       - type: node_contained_in_nodejs
         target: nodejs
+
+###########################################################
+# This outpus section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
 
 outputs:
   endpoint:

@@ -17,7 +17,7 @@ The first thing you'll need to do is
 <br>
 This will let you run the various blueprints.
 
-**Note: <br><br>Documentation about the blueprints content is located inside the blueprint files themselves.
+**Note: <br>Documentation about the blueprints content is located inside the blueprint files themselves.
 <br>Presented here are only instructions on how to RUN the blueprints using the Cloudify CLI.**
 <br><br>
 **From now on, all commands will assume that the working directory is the root of this repository.**
@@ -32,10 +32,11 @@ Let see how this is done:
 `cfy local init -p local-blueprint.yaml` <br>
 
 This command (as the name suggests) initializes your working directory to work with the given blueprint.
-Now, you can run any type of workflows on this blueprint.
-Lets run the `install` workflow: <br>
+Now, you can run any type of workflows on this blueprint. <br>
 
 ### Step 2: Install
+
+Lets run the `install` workflow: <br>
 
 `cfy local execute -w install`
 
@@ -47,7 +48,7 @@ Once its done, you should be able to browse to [http://localhost:8080](http://lo
 
 ### Step 3: Uninstall
 
-To uninstall the application we run the `uninstall` workflows: <br>
+To uninstall the application we run the `uninstall` workflow: <br>
 
 `cfy local execute -w uninstall`
 
@@ -95,7 +96,7 @@ and everything else that is needed and declared in the blueprint.<br>
 
 ### Step 5: Verify installation
 
-Once the workflows execution is completed, we can compose the application endpoint by running: <br>
+Once the workflow execution is complete, we can view the application endpoint by running: <br>
 
 `cfy deployments outputs -d <deployment_id>`
 
