@@ -193,7 +193,7 @@ node_templates:
         name: nodecellar_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, base_port ] }
+          port: { get_property: [ nodecellar, port ] }
 
   ###########################################################
   # A security group to enable access to the mongo host
