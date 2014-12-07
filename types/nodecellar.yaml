@@ -1,0 +1,117 @@
+################################################################
+# Blueprint node types.
+#
+# specific new types for the nodecellar app.
+# these types are mapped to scripts that are resposible
+# for the lifecycle operation.
+################################################################
+
+node_types:
+
+  ###########################################################
+  # Mongo Database.
+  #
+  # Used a the data backend for the nodecellar application.
+  # configurable properties:
+  #   - port
+  ###########################################################
+
+  nodecellar.nodes.MongoDatabase:
+    derived_from: cloudify.nodes.DBMS
+    properties:
+      port:
+        description: MongoDB port
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: scripts/mongo/install-mongo.sh
+        start: scripts/mongo/start-mongo.sh
+        stop: scripts/mongo/stop-mongo.sh
+
+
+  ###########################################################
+  # NodeJS Server.
+  #
+  # Used to host the nodecellar application module.
+  ###########################################################
+
+  nodecellar.nodes.NodeJSServer:
+    derived_from: cloudify.nodes.ApplicationServer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: scripts/nodejs/install-nodejs.sh
+
+
+  ###########################################################
+  # Nodecellar application.
+  #
+  # This is the actual application source files.
+  # configurable properties:
+  #   - port
+  #   - application url
+  #   - startup script
+  ###########################################################
+
+  nodecellar.nodes.NodecellarApplicationModule:
+    derived_from: cloudify.nodes.ApplicationModule
+    properties:
+      port:
+        description: Web application port
+        type: integer
+      application_url:
+        description: >
+          URL to an archive containing the application source.
+          The archive must contain one top level directory.
+        default: https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz
+      startup_script:
+        description: >
+          This script will be used to start the nodejs application.
+          The path is relative to the top level single directory inside
+          the archive
+        type: string
+        default: server.js
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure: scripts/nodecellar/install-nodecellar-app.sh
+        start: scripts/nodecellar/start-nodecellar-app.sh
+        stop: scripts/nodecellar/stop-nodecellar-app.sh
+
+
+################################################################
+# Blueprint relationships.
+#
+# specific new relationships for the nodecellar app.
+# these relationships are mapped to scripts that are resposible
+# for the relationship operation.
+################################################################
+
+relationships:
+
+  ###########################################################
+  # This relationship is responsible for setting the mongo
+  # host ip on the source node as a runtime property.
+  #
+  # This will enable the source node to locate the mongo
+  # database.
+  ###########################################################
+
+  node_connected_to_mongo:
+    derived_from: cloudify.relationships.connected_to
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+        postconfigure: scripts/mongo/set-mongo-url.sh
+
+
+  ###########################################################
+  # This relationship is responsible for setting the nodejs
+  # location on the source node.
+  #
+  # This will enable the source node to locate nodejs and
+  # use it to install depenencies with npm
+  ###########################################################
+
+  node_contained_in_nodejs:
+    derived_from: cloudify.relationships.contained_in
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+        preconfigure: scripts/nodejs/set-nodejs-root.sh

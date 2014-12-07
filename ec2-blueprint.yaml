@@ -1,148 +1,238 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on an amazon ec2 cloud environment.
+###########################################################
+
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
   - http://www.getcloudify.org/spec/libcloud-plugin/1.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
+  - types/nodecellar.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
+inputs:
+
+  image:
+    description: >
+      Image to be used when launching agent VM's
+
+  size:
+    description: >
+      Flavor of the agent VM's
+
+  agent_user:
+    description: >
+      User for connecting to agent VM's
 
 node_types:
-  vm_host:
+
+  ###########################################################
+  # We define a type that inherits ec2's default
+  # server, and adds monitoring capabillities on top of it.
+  ###########################################################
+
+  nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.libcloud.nodes.Server
     properties:
       cloudify_agent:
         default:
-          user: ubuntu
+          user: { get_input: agent_user }
       server:
-        default:
-          image_name: ami-a73264ce
-          size_name: m1.medium
-          security_groups: ['node_cellar_sg']
+        description: >
+          Server definitions like image and size.
+    interfaces:
 
-  mongo_database:
-    derived_from: cloudify.nodes.DBMS
-    properties:
-      role:
-        description: MongoDB role
-      port:
-        description: MongoDB port
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
 
-  nodejs_server:
-    derived_from: cloudify.nodes.ApplicationServer
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                default:
+                  interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
 
-  nodejs_app:
-    derived_from: cloudify.nodes.ApplicationModule
-    properties:
-      app_name:
-        description: Application name
-        type: string
-      startup_script:
-        description: Nodejs startup script
-        type: string
-      git_url:
-        description: Web application git url
-        type: string
-      git_branch:
-        description: git branch
-        type: string
-      base_port:
-        description: Web application port
-        type: integer
-      num_instances:
-        description: Number of instances
-        type: integer
-      env_file_path:
-          type: string
-          default: ''
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
 
-relationships:
-  nodecellar_connected_to_mongo:
-    derived_from: cloudify.relationships.connected_to
-    source_interfaces:
-      cloudify.interfaces.relationship_lifecycle:
-        postconfigure:
-          implementation: nodecellar-scripts/postconfigure.py
-          inputs: {}
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                default:
+                  CPUCollector: {}
+                  MemoryCollector: {}
+                  LoadAverageCollector: {}
+                  DiskUsageCollector:
+                    config:
+                      devices: x?vd[a-z]+[0-9]*$
+                  NetworkCollector: {}
 
 node_templates:
-  node_cellar_security_group:
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      server:
+        image_name: { get_input: image }
+        size_name: { get_input: size }
+
+        ###########################################################
+        # Attaching the mongo security group to the mongo host
+        ###########################################################
+
+        security_groups: ['mongod_security_group']
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      server:
+        image_name: { get_input: image }
+        size_name: { get_input: size }
+
+        ###########################################################
+        # Attaching the nodecellar security group to
+        # the nodecellar host
+        ###########################################################
+
+        security_groups: ['nodecellar_security_group']
+
+    relationships:
+      - target: nodecellar_floatingip
+        type: cloudify.libcloud.server_connected_to_floating_ip
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+
+  nodecellar_security_group:
     type: cloudify.libcloud.nodes.SecurityGroup
     properties:
       security_group:
-        name: node_cellar_sg
+        name: nodecellar_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar_app, base_port ] }
+          port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
+  # A security group to enable access to the mongo host
+  # using the port of the mongo node.
+  #
+  # We need this so that the nodecellar application can
+  # comminicate with MongoDB, since they are running on
+  # different hosts.
+  ###########################################################
+
+  mongod_security_group:
+    type: cloudify.libcloud.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: mongod_security_group
+      rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
         - remote_ip_prefix: 0.0.0.0/0
           port: 28017
 
-  floatingip:
+  ###########################################################
+  # A floating ip to be attached to the nodejs host, since
+  # eventually we want to be able to access it
+  # from any machine, on any network.
+  ###########################################################
+
+  nodecellar_floatingip:
     type: cloudify.libcloud.nodes.FloatingIP
 
-  mongod_vm:
-    type: vm_host
-    instances:
-      deploy: 1
-    relationships:
-      - target: node_cellar_security_group
-        type: cloudify.relationships.connected_to
-
-  nodejs_vm:
-    type: vm_host
-    instances:
-      deploy: 1
-    relationships:
-      - target: floatingip
-        type: cloudify.libcloud.server_connected_to_floating_ip
-      - target: node_cellar_security_group
-        type: cloudify.relationships.connected_to
-
-  mongod:
-    type: mongo_database
-    properties:
-      role: mongod
-      port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: mongo-scripts/install-mongo.sh
-        start: mongo-scripts/start-mongo.sh
-        stop: mongo-scripts/stop-mongo.sh
-    relationships:
-      - target: mongod_vm
-        type: cloudify.relationships.contained_in
-
-  nodejs:
-    type: nodejs_server
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-nodejs.sh
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_vm
-
-  nodecellar_app:
-    type: nodejs_app
-    properties:
-      app_name: nodecellar
-      startup_script: server.js
-      git_url: https://github.com/cloudify-cosmo/nodecellar.git
-      git_branch: master
-      base_port: 8080
-      num_instances: 1
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create: nodejs-scripts/install-app.sh
-        start: nodejs-scripts/start-app.sh
-        stop: nodejs-scripts/stop-app.sh
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs
-      - type: nodecellar_connected_to_mongo
-        target: mongod
+###########################################################
+# This outpus section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
 
 outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_vm, ip ] }
-      port: { get_property: [ nodecellar_app, base_port ] }
+      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
+      port: { get_property: [ nodecellar, port ] }
