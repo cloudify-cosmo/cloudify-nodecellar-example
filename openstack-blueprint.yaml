@@ -84,7 +84,9 @@ node_types:
                   CPUCollector: {}
                   MemoryCollector: {}
                   LoadAverageCollector: {}
-                  DiskUsageCollector: {}
+                  DiskUsageCollector:
+                    config:
+                      devices: x?vd[a-z]+[0-9]*$
                   NetworkCollector: {}
 
 node_templates:

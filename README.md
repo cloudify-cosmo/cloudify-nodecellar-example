@@ -80,9 +80,9 @@ Every one of these blueprints have inputs, which can be populated for a deployme
 The input files are located under the inputs directory. <br>
 All of them contain the following:
 
-- `image` - Image identifier for the agent VM's
-- `flavor/size` - Flavor (Openstack) or Size (EC2) of the VM's
-- `agent_user` - Since the user name of a VM may depend on the image, specify here the user name for your image.
+- `image` - Image identifier for the agent VM's.
+- `flavor/size` - Flavor (Openstack) or Size (EC2) of the VM's.
+- `agent_user` - Since the username of a VM depends on the image, specify here the user name for your image.
 
 After you entered all of these values, run: <br>
 

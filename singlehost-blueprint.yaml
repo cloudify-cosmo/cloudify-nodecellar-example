@@ -77,7 +77,10 @@ node_templates:
                 CPUCollector: {}
                 MemoryCollector: {}
                 LoadAverageCollector: {}
-                DiskUsageCollector: {}
+                DiskUsageCollector:
+                  config:
+                    devices: x?vd[a-z]+[0-9]*$
+                NetworkCollector: {}
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
