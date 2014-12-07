@@ -14,3 +14,4 @@ script:
     - cfy init
     - cfy local init -p blueprints/local-blueprint.yaml
     - cfy local execute -w install
+    
