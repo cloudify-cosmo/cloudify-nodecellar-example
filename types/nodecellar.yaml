@@ -62,7 +62,7 @@ node_types:
         description: >
           URL to an archive containing the application source.
           The archive must contain one top level directory.
-        default: https://github.com/cloudify-cosmo/nodecellar/archive/master.zip
+        default: https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz
       startup_script:
         description: >
           This script will be used to start the nodejs application.
