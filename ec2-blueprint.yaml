@@ -69,9 +69,10 @@ node_types:
           stop: diamond.diamond_agent.tasks.stop
           uninstall: diamond.diamond_agent.tasks.uninstall
 
-      ##########################
-      # Adding some collectors
-      ##########################
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
 
       cloudify.interfaces.monitoring:
           start:

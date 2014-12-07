@@ -30,14 +30,14 @@ function download() {
 
 }
 
+
 function untar() {
 
     tar_archive=$1
     destination=$2
 
-    inner_name=$(tar -tf "${tar_archive}" | grep -o '^[^/]\+' | sort -u)
-
     if [ ! -d ${destination} ]; then
+        inner_name=$(tar -tf "${tar_archive}" | grep -o '^[^/]\+' | sort -u)
         ctx logger info "Untaring ${tar_archive}"
         tar -zxvf ${tar_archive}
 
@@ -61,7 +61,7 @@ mkdir -p ${MONGO_ROOT_PATH}
 
 cd ${TEMP_DIR}
 download http://downloads.mongodb.org/linux/${MONGO_TARBALL_NAME} ${MONGO_TARBALL_NAME}
-untar ${MONGO_TARBALL_NAME} ${MONGO_ROOT_PATH}/mongodb-binaries
+untar ${MONGO_TARBALL_NAME} ${MONGO_BINARIES_PATH}
 
 ctx logger info "Creating MongoDB data directory in ${MONGO_DATA_PATH}"
 mkdir -p ${MONGO_DATA_PATH}

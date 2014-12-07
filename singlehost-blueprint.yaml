@@ -65,9 +65,10 @@ node_templates:
           stop: diamond.diamond_agent.tasks.stop
           uninstall: diamond.diamond_agent.tasks.uninstall
 
-      ##########################
-      # Adding some collectors
-      ##########################
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
 
       cloudify.interfaces.monitoring:
           start:
@@ -112,13 +113,13 @@ node_templates:
                     hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
-        target: vm
+        target: host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: vm
+        target: host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
@@ -150,6 +151,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ vm, ip ] }
+      ip_address: { get_property: [ host, ip ] }
       port: { get_property: [nodecellar, port] }
 

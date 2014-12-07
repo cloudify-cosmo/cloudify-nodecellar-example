@@ -73,7 +73,8 @@ function extract() {
 TEMP_DIR='/tmp'
 NODEJS_BINARIES_PATH=$(ctx instance runtime_properties nodejs_binaries_path)
 APPLICATION_URL=$(ctx node properties application_url)
-NODECELLAR_ARCHIVE_NAME='nodecellar_application.archive'
+AFTER_SLASH=${APPLICATION_URL##*/}
+NODECELLAR_ARCHIVE_NAME=${AFTER_SLASH%%\?*}
 
 ################################
 # Directory that will contain:
