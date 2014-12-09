@@ -2,12 +2,12 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     #- http://www.getcloudify.org/spec/bash-plugin/1.1m5/plugin.yaml
-    - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
-    - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1m5/plugin.yaml.template
+    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+    - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1GA/plugin.yaml.template
 
 node_types:
     virtual_machine:
-        derived_from: cloudify.cloudstack.virtual_machine
+        derived_from: cloudify.cloudstack.nodes.VirtualMachine
         properties:
             management_network_name:
                 default: { get_property: [mgmt_network, resource_id] }
@@ -31,7 +31,7 @@ node_types:
                     expunge: True
 
     mongo_database:
-        derived_from: cloudify.types.db_server
+        derived_from: cloudify.nodes.DBMS
         properties:
             role:
               description: MongoDB role
@@ -39,10 +39,10 @@ node_types:
               description: MongDB port
 
     nodejs_server:
-        derived_from: cloudify.types.app_server
+        derived_from: cloudify.nodes.ApplicationServer
 
     nodejs_app:
-        derived_from: cloudify.types.app_module
+        derived_from: cloudify.nodes.ApplicationServer
         properties:
           app_name:
             description: Application name
@@ -77,7 +77,7 @@ relationships:
 
 node_templates:
     node_cellar_web:
-      type: cloudify.cloudstack.network
+      type: cloudify.cloudstack.nodes.Network
       properties:
           resource_id: node_cellar_web
           network:
@@ -105,7 +105,7 @@ node_templates:
             type: cloudify.relationships.contained_in
 
     node_cellar_db:
-      type: cloudify.cloudstack.network
+      type: cloudify.cloudstack.nodes.Network
       properties:
           resource_id: node_cellar_db
           network:
@@ -133,7 +133,7 @@ node_templates:
             type: cloudify.relationships.contained_in
 
     floatingip:
-      type: cloudify.cloudstack.floatingip    
+      type: cloudify.cloudstack.nodes.FloatingIP    
       properties:
         floatingip:
           floating_network_name: node_cellar_network
@@ -142,7 +142,7 @@ node_templates:
             type: cloudify.cloudstack.floating_ip_connected_to_network
 
     nodecellar_vpc:
-        type: cloudify.cloudstack.vpc
+        type: cloudify.cloudstack.nodes.VPC
         properties: 
             resource_id: nodecellar-vpc
             network:
@@ -152,7 +152,7 @@ node_templates:
                 cidr: 10.5.0.0/16
 
     mgmt_network:
-      type: cloudify.cloudstack.network
+      type: cloudify.cloudstack.nodes.Network
       properties:
           resource_id: cloudify-management
           use_external_resource: True
