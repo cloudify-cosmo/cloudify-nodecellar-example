@@ -102,6 +102,9 @@ node_templates:
         ###########################################################
 
         security_groups: ['mongod_security_group']
+    relationships:
+      - target: mongod_security_group
+        type: cloudify.relationships.connected_to
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
@@ -120,6 +123,8 @@ node_templates:
     relationships:
       - target: nodecellar_floatingip
         type: cloudify.libcloud.server_connected_to_floating_ip
+      - target: nodecellar_security_group
+        type: cloudify.relationships.connected_to
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
