@@ -2,12 +2,12 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     #- http://www.getcloudify.org/spec/bash-plugin/1.1m5/plugin.yaml
-    - http://www.getcloudify.org/spec/cloudify/3.1m5/types.yaml
-    - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1m5/plugin.yaml.template
+     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+     - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1GA/plugin.yaml.template
 
 node_types:
     virtual_machine:
-        derived_from: cloudify.cloudstack.virtual_machine
+        derived_from: cloudify.cloudstack.nodes.VirtualMachine
         properties:
             management_network_name:
                 default: { get_property: [mgmt_network, resource_id] }
@@ -39,7 +39,7 @@ node_types:
                     # extra networks will be added through relationships if neeeded.
 
     mongo_database:
-        derived_from: cloudify.types.db_server
+        derived_from: cloudify.types.nodes.DBMS
         properties:
             role:
               description: MongoDB role
@@ -47,10 +47,10 @@ node_types:
               description: MongDB port
 
     nodejs_server:
-        derived_from: cloudify.types.app_server
+        derived_from: cloudify.types.nodes.ApplicationServer
 
     nodejs_app:
-        derived_from: cloudify.types.app_module
+        derived_from: cloudify.types.nodes.ApplicationServer
         properties:
           app_name:
             description: Application name
@@ -85,7 +85,7 @@ relationships:
 
 node_templates:
     node_cellar_network:
-      type: cloudify.cloudstack.network
+      type: cloudify.cloudstack.nodes.Network
       properties:
           resource_id: node_cellar_network
           network:
@@ -105,7 +105,7 @@ node_templates:
                 ports: [80, 443]
 
     floatingip:
-      type: cloudify.cloudstack.floatingip    
+      type: cloudify.cloudstack.nodes.FloatingIP   
       properties:
         floatingip:
           floating_network_name: node_cellar_network
@@ -114,7 +114,7 @@ node_templates:
             type: cloudify.cloudstack.floating_ip_connected_to_network
 
     mgmt_network:
-      type: cloudify.cloudstack.network
+      type: cloudify.cloudstack.nodes.Network
       properties:
           resource_id: cfy-mgmt
           use_external_resource: True

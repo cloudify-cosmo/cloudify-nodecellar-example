@@ -5,6 +5,20 @@ imports:
     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
     - https://raw.githubusercontent.com/schubergphilis/cloudify-cloudstack-plugin/3.1GA/plugin.yaml.template
 
+inputs:
+    nodecellar_github_url:
+        description: >
+            The URL to the nodecellar github repo
+        default: "https://github.com/schubergphilis/nodecellar"
+    nodecellar_github_branch:
+      description: >
+            The GitHub branch to deploy
+      default: master
+    nodecellar_port:
+        description: >
+            Public Port where nodecellar should listen
+        default: 8080
+
 node_types:
     virtual_machine:
         derived_from: cloudify.cloudstack.nodes.VirtualMachine
@@ -29,6 +43,7 @@ node_types:
                     image_id: 1046fbb6-2f2f-49f1-8b64-6c1d6a620597
                     size: employee-medium-ha
                     expunge: True
+                    zone: 'BETA-SBP-DC-1'
 
     mongo_database:
         derived_from: cloudify.nodes.DBMS
