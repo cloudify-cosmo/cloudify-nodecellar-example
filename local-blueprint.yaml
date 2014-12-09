@@ -52,7 +52,7 @@ node_templates:
         target: nodejs
 
 ###########################################################
-# This outpus section exposes the application endpoint.
+# This outputs section exposes the application endpoint.
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
