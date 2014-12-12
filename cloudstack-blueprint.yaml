@@ -39,7 +39,7 @@ node_types:
                     # extra networks will be added through relationships if neeeded.
 
     mongo_database:
-        derived_from: cloudify.types.nodes.DBMS
+        derived_from: cloudify.nodes.DBMS
         properties:
             role:
               description: MongoDB role
@@ -47,10 +47,10 @@ node_types:
               description: MongDB port
 
     nodejs_server:
-        derived_from: cloudify.types.nodes.ApplicationServer
+        derived_from: cloudify.nodes.ApplicationServer
 
     nodejs_app:
-        derived_from: cloudify.types.nodes.ApplicationServer
+        derived_from: cloudify.nodes.ApplicationServer
         properties:
           app_name:
             description: Application name
