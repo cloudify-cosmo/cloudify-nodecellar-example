@@ -116,7 +116,7 @@ node_templates:
     mgmt_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-          resource_id: cfy-mgmt
+          resource_id: cloudify-management
           use_external_resource: True
           network:
               #name: cfy_agent
