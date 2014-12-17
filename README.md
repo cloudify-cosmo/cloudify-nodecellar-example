@@ -58,6 +58,8 @@ To uninstall the application we run the `uninstall` workflow: <br>
 - [Openstack Nova Net Blueprint](openstack-nova-net-blueprint.yaml)
 - [EC2 Blueprint](ec2-blueprint.yaml)
 - [Singlehost Blueprint](singlehost-blueprint.yaml)
+- [CloudStack Blueprint](cloudstack-blueprint.yaml)
+- [CloudStack VPC Blueprint](cloudstack-vpc-blueprint.yaml)
 
 All of these blueprints allow you to install the nodecellar application on different cloud environments.
 Doing this requires first to bootstrap a Cloudify Manager.<br>
