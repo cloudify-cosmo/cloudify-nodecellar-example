@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/master/plugin.yaml.template
+    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/1.1/plugin.yaml.template
     - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
     - types/nodecellar.yaml
 
@@ -29,6 +29,9 @@ inputs:
     description: >
       The CloudStack serviceoffering of the application network created by the blueprint
 
+  management_network_resource_id:
+    description: >
+      The name of the cloudify management network created during the manager bootstrap process 
 
 
 node_types:
@@ -48,16 +51,10 @@ node_types:
             default:
               user: { get_input: agent_user }
               port: 22
-              # example for ssh key file (see `key_name` below)
-              # this file matches the agent key configured during the bootstrap
-              #key: /root/.ssh/cloudify-agents-kp.pem
         server:
           default:
             image_id: { get_input: image_id }
             size: { get_input: image_size }
-            #keypair_name: cloudify-agents-kp
-            # node can only be in either default_network OR security_group NOT both
-            # extra networks will be added through relationships if neeeded.
 
       interfaces:
 
@@ -100,10 +97,14 @@ node_types:
 
 node_templates:
 
-    node_cellar_web:
+    ###########################################################
+    # A network for the web part of the application 
+    ###########################################################
+
+    node_cellar_web_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-          resource_id: node_cellar_web
+          resource_id: node_cellar_web_network
           network:
               vpc: { get_property: [nodecellar_vpc, resource_id] }
               service_offering: 'NiciraNvpVpcNetwork'
@@ -127,10 +128,14 @@ node_templates:
           - target: nodecellar_vpc
             type: cloudify.relationships.contained_in
 
-    node_cellar_db:
+    ###########################################################
+    # A network for the web part of the mongo database 
+    ###########################################################
+    
+    node_cellar_db_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-          resource_id: node_cellar_db
+          resource_id: node_cellar_db_network
           network:
               vpc: { get_property: [nodecellar_vpc, resource_id] }
               service_offering: 'NiciraNvpVpcNetwork'
@@ -154,14 +159,23 @@ node_templates:
           - target: nodecellar_vpc
             type: cloudify.relationships.contained_in
 
+    ###########################################################
+    # A floating IP for the web application to be accesible 
+    # from the outside 
+    ###########################################################
+
     floatingip:
       type: cloudify.cloudstack.nodes.FloatingIP    
       properties:
         floatingip:
           floating_network_name: node_cellar_network
       relationships:
-          - target: node_cellar_web
+          - target: node_cellar_web_network
             type: cloudify.cloudstack.floating_ip_connected_to_network
+
+    ###########################################################
+    # A VPC for the entire application 
+    ###########################################################
 
     nodecellar_vpc:
         type: cloudify.cloudstack.nodes.VPC
@@ -172,10 +186,15 @@ node_templates:
                 zone: BETA-SBP-DC-1
                 cidr: 10.5.0.0/16
 
+    ############################################################
+    # Define the management network so that we can connect each 
+    # the VMs to it 
+    ############################################################
+
     mgmt_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-        resource_id: cloudify-management
+        resource_id: { get_input: management_network_resource_id }
         use_external_resource: True
         network:
           service_offering: { get_input: cloudstack_network_service_offering }
@@ -187,9 +206,9 @@ node_templates:
             deploy: 1
       properties:
           network:
-            default_network: node_cellar_db
+            default_network: node_cellar_db_network
       relationships:
-          - target: node_cellar_db
+          - target: node_cellar_db_network
             type: cloudify.relationships.connected_to
           - target: mgmt_network
             type: cloudify.cloudstack.virtual_machine_connected_to_network
@@ -200,7 +219,7 @@ node_templates:
           deploy: 1
       properties:
           network:
-            default_network: node_cellar_web
+            default_network: node_cellar_web_network
           portmaps:
               - protocol: TCP
                 private_port: 8080
@@ -208,7 +227,7 @@ node_templates:
                 public_port: 8080
                 public_end_port: 8080
       relationships:
-          - target: node_cellar_web
+          - target: node_cellar_web_network
             type: cloudify.relationships.connected_to
           - target: floatingip
             type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip

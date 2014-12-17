@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/master/plugin.yaml.template
+    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/1.1/plugin.yaml.template
     - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
     - types/nodecellar.yaml
 
@@ -29,6 +29,10 @@ inputs:
     description: >
       The CloudStack serviceoffering of the application network created by the blueprint
 
+  management_network_resource_id:
+    description: >
+      The name of the cloudify management network created during the manager bootstrap process 
+
 
 
 node_types:
@@ -48,16 +52,10 @@ node_types:
             default:
               user: { get_input: agent_user }
               port: 22
-              # example for ssh key file (see `key_name` below)
-              # this file matches the agent key configured during the bootstrap
-              #key: /root/.ssh/cloudify-agents-kp.pem
         server:
           default:
             image_id: { get_input: image_id }
             size: { get_input: image_size }
-            #keypair_name: cloudify-agents-kp
-            # node can only be in either default_network OR security_group NOT both
-            # extra networks will be added through relationships if neeeded.
 
       interfaces:
 
@@ -99,6 +97,11 @@ node_types:
                     NetworkCollector: {}
 
 node_templates:
+
+    ###########################################################
+    # A new network dedicated for the application
+    ###########################################################
+
     node_cellar_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
@@ -127,10 +130,15 @@ node_templates:
           - target: node_cellar_network
             type: cloudify.cloudstack.floating_ip_connected_to_network
 
+    ############################################################
+    # Define the management network so that we can connect each 
+    # the VMs to it 
+    ############################################################
+
     mgmt_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-        resource_id: cloudify-management
+        resource_id: { get_input: management_network_resource_id }
         use_external_resource: True
         network:
           service_offering: { get_input: cloudstack_network_service_offering }
