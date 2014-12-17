@@ -43,7 +43,6 @@ node_types:
         network:
           default:
             default_network: node_cellar_network
-            #default_security_group ['node_cellar_security_group']
             ip_address: {}
         cloudify_agent:
             default:
@@ -105,7 +104,6 @@ node_templates:
       properties:
           resource_id: node_cellar_network
           network:
-            #name: node_cellar_network
             service_offering: { get_input: cloudstack_network_service_offering }
             zone: { get_input: cloudstack_zone }
             gateway: 10.4.1.1
@@ -135,7 +133,6 @@ node_templates:
         resource_id: cloudify-management
         use_external_resource: True
         network:
-          #name: cfy_agent
           service_offering: { get_input: cloudstack_network_service_offering }
           zone: { get_input: cloudstack_zone }
 

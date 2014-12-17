@@ -43,7 +43,6 @@ node_types:
         network:
           default:
             default_network: node_cellar_network
-            #default_security_group ['node_cellar_security_group']
             ip_address: {}
         cloudify_agent:
             default:
@@ -107,7 +106,6 @@ node_templates:
           resource_id: node_cellar_web
           network:
               vpc: { get_property: [nodecellar_vpc, resource_id] }
-              #name: node_cellar_network
               service_offering: 'NiciraNvpVpcNetwork'
               zone: 'BETA-SBP-DC-1'
               gateway: 10.5.1.1
@@ -135,7 +133,6 @@ node_templates:
           resource_id: node_cellar_db
           network:
               vpc: { get_property: [nodecellar_vpc, resource_id] }
-              #name: node_cellar_network
               service_offering: 'NiciraNvpVpcNetwork'
               zone: 'BETA-SBP-DC-1'
               gateway: 10.5.2.1
@@ -171,18 +168,16 @@ node_templates:
         properties: 
             resource_id: nodecellar-vpc
             network:
-                #name: VPC_cfy-mgt
                 service_offering: 'Default VPC offering'
                 zone: BETA-SBP-DC-1
                 cidr: 10.5.0.0/16
-                
+
     mgmt_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
         resource_id: cloudify-management
         use_external_resource: True
         network:
-          #name: cfy_agent
           service_offering: { get_input: cloudstack_network_service_offering }
           zone: { get_input: cloudstack_zone }
 
