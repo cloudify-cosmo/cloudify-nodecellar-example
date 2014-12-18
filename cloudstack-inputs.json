@@ -1,0 +1,8 @@
+{
+	"image_id":"CLOUDSTACK IMAGE ID GOES HERE", 
+  	"image_size":"CLOUDSTACK SERVICE OFFERING GOES HERE", 
+  	"agent_user":"CLOUDIFY AGENT USER",     
+  	"cloudstack_zone":"CLOUDSTACK ZONE",     
+  	"cloudstack_network_service_offering":"CLOUDSTACK NETWORK SERVICE OFFERING", 
+  	"management_network_resource_id": "CLOUDIFY MANAGEMENT NETWORK RESOURCE ID"
+}

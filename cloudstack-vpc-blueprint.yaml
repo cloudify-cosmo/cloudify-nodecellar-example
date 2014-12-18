@@ -1,10 +1,10 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/1.1/plugin.yaml.template
-    - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
-    - types/nodecellar.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudstack-plugin/1.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
+  - types/nodecellar.yaml
 
 inputs:
 
@@ -36,261 +36,257 @@ inputs:
 
 node_types:
 
-    nodecellar.nodes.MonitoredServer:
-      derived_from: cloudify.cloudstack.nodes.VirtualMachine
-      properties:
-        management_network_name:
-          default: { get_property: [mgmt_network, resource_id] }
-        portmaps:
-          default: {}
-        network:
-          default:
-            default_network: node_cellar_network
-            ip_address: {}
-        cloudify_agent:
-            default:
-              user: { get_input: agent_user }
-              port: 22
-        server:
-          default:
-            image_id: { get_input: image_id }
-            size: { get_input: image_size }
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.cloudstack.nodes.VirtualMachine
+    properties:
+      management_network_name:
+        default: { get_property: [mgmt_network, resource_id] }
+      portmaps:
+        default: {}
+      network:
+        default:
+          default_network: node_cellar_network
+          ip_address: {}
+      server:
+        default:
+          image_id: { get_input: image_id }
+          size: { get_input: image_size }
 
-      interfaces:
+    interfaces:
 
-        ###########################################################
-        # We are infact telling cloudify to install a diamond
-        # monitoring agent on the server.
-        #
-        # (see https://github.com/BrightcoveOS/Diamond)
-        ###########################################################
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
 
-        cloudify.interfaces.monitoring_agent:
-            install:
-              implementation: diamond.diamond_agent.tasks.install
-              inputs:
-                diamond_config:
-                  default:
-                    interval: 1
-            start: diamond.diamond_agent.tasks.start
-            stop: diamond.diamond_agent.tasks.stop
-            uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring_agent:
+        install:
+          implementation: diamond.diamond_agent.tasks.install
+          inputs:
+            diamond_config:
+              default:
+                interval: 1
+        start: diamond.diamond_agent.tasks.start
+        stop: diamond.diamond_agent.tasks.stop
+        uninstall: diamond.diamond_agent.tasks.uninstall
 
-        ###########################################################
-        # Adding some collectors. These collectors are necessary
-        # for the Cloudify UI to display the deafult metrics.
-        ###########################################################
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
 
-        cloudify.interfaces.monitoring:
-            start:
-              implementation: diamond.diamond_agent.tasks.add_collectors
-              inputs:
-                collectors_config:
-                  default:
-                    CPUCollector: {}
-                    MemoryCollector: {}
-                    LoadAverageCollector: {}
-                    DiskUsageCollector:
-                      config:
-                        devices: x?vd[a-z]+[0-9]*$
-                    NetworkCollector: {}
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              default:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector:
+                  config:
+                    devices: x?vd[a-z]+[0-9]*$
+                NetworkCollector: {}
 
 node_templates:
 
-    ###########################################################
-    # A network for the web part of the application 
-    ###########################################################
+  ###########################################################
+  # A network for the web part of the application 
+  ###########################################################
 
-    node_cellar_web_network:
-      type: cloudify.cloudstack.nodes.Network
-      properties:
-          resource_id: node_cellar_web_network
-          network:
-              vpc: { get_property: [nodecellar_vpc, resource_id] }
-              service_offering: 'NiciraNvpVpcNetwork'
-              zone: 'BETA-SBP-DC-1'
-              gateway: 10.5.1.1
-              netmask: 255.255.255.0
-          firewall:
-              - type: ingress
-                protocol: TCP
-                cidr: 0.0.0.0/0
-                ports: [8080]
-              - type: egress
-                protocol: TCP
-                cidr: 0.0.0.0/0
-                ports: [80, 443]
-              - type: egress
-                protocol: TCP
-                cidr: 10.5.2.0/24
-                ports: [27017]
-      relationships:
-          - target: nodecellar_vpc
-            type: cloudify.relationships.contained_in
+  node_cellar_web_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: node_cellar_web_network
+      network:
+          vpc: { get_property: [nodecellar_vpc, resource_id] }
+          service_offering: 'NiciraNvpVpcNetwork'
+          zone: 'BETA-SBP-DC-1'
+          gateway: 10.5.1.1
+          netmask: 255.255.255.0
+      firewall:
+        - type: ingress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [8080]
+        - type: egress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [80, 443]
+        - type: egress
+          protocol: TCP
+          cidr: 10.5.2.0/24
+          ports: [27017]
+    relationships:
+      - target: nodecellar_vpc
+        type: cloudify.relationships.contained_in
 
-    ###########################################################
-    # A network for the web part of the mongo database 
-    ###########################################################
-    
-    node_cellar_db_network:
-      type: cloudify.cloudstack.nodes.Network
-      properties:
-          resource_id: node_cellar_db_network
-          network:
-              vpc: { get_property: [nodecellar_vpc, resource_id] }
-              service_offering: 'NiciraNvpVpcNetwork'
-              zone: 'BETA-SBP-DC-1'
-              gateway: 10.5.2.1
-              netmask: 255.255.255.0
-          firewall:
-              - type: ingress
-                protocol: TCP
-                cidr: 0.0.0.0/0
-                ports: [8080]
-              - type: egress
-                protocol: TCP
-                cidr: 0.0.0.0/0
-                ports: [80, 443]
-              - type: ingress
-                protocol: TCP
-                cidr: 10.5.1.0/24
-                ports: [27017]
-      relationships:
-          - target: nodecellar_vpc
-            type: cloudify.relationships.contained_in
+  ###########################################################
+  # A network for the web part of the mongo database 
+  ###########################################################
 
-    ###########################################################
-    # A floating IP for the web application to be accesible 
-    # from the outside 
-    ###########################################################
+  node_cellar_db_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: node_cellar_db_network
+      network:
+        vpc: { get_property: [nodecellar_vpc, resource_id] }
+        service_offering: 'NiciraNvpVpcNetwork'
+        zone: 'BETA-SBP-DC-1'
+        gateway: 10.5.2.1
+        netmask: 255.255.255.0
+      firewall:
+        - type: ingress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [8080]
+        - type: egress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [80, 443]
+        - type: ingress
+          protocol: TCP
+          cidr: 10.5.1.0/24
+          ports: [27017]
+    relationships:
+      - target: nodecellar_vpc
+        type: cloudify.relationships.contained_in
 
-    floatingip:
-      type: cloudify.cloudstack.nodes.FloatingIP    
-      properties:
-        floatingip:
-          floating_network_name: node_cellar_network
-      relationships:
-          - target: node_cellar_web_network
-            type: cloudify.cloudstack.floating_ip_connected_to_network
+  ###########################################################
+  # A floating IP for the web application to be accesible 
+  # from the outside 
+  ###########################################################
 
-    ###########################################################
-    # A VPC for the entire application 
-    ###########################################################
+  floatingip:
+    type: cloudify.cloudstack.nodes.FloatingIP    
+    properties:
+      floatingip:
+        floating_network_name: node_cellar_network
+    relationships:
+        - target: node_cellar_web_network
+          type: cloudify.cloudstack.floating_ip_connected_to_network
 
-    nodecellar_vpc:
-        type: cloudify.cloudstack.nodes.VPC
-        properties: 
-            resource_id: nodecellar-vpc
-            network:
-                service_offering: 'Default VPC offering'
-                zone: BETA-SBP-DC-1
-                cidr: 10.5.0.0/16
+  ###########################################################
+  # A VPC for the entire application 
+  ###########################################################
 
-    ############################################################
-    # Define the management network so that we can connect each 
-    # the VMs to it 
-    ############################################################
-
-    mgmt_network:
-      type: cloudify.cloudstack.nodes.Network
-      properties:
-        resource_id: { get_input: management_network_resource_id }
-        use_external_resource: True
+  nodecellar_vpc:
+    type: cloudify.cloudstack.nodes.VPC
+    properties: 
+        resource_id: nodecellar-vpc
         network:
-          service_offering: { get_input: cloudstack_network_service_offering }
-          zone: { get_input: cloudstack_zone }
+            service_offering: 'Default VPC offering'
+            zone: BETA-SBP-DC-1
+            cidr: 10.5.0.0/16
 
-    mongod_host:
-      type: nodecellar.nodes.MonitoredServer
-      instances:
-            deploy: 1
-      properties:
-          network:
-            default_network: node_cellar_db_network
-      relationships:
-          - target: node_cellar_db_network
-            type: cloudify.relationships.connected_to
-          - target: mgmt_network
-            type: cloudify.cloudstack.virtual_machine_connected_to_network
+  ############################################################
+  # Define the management network so that we can connect each 
+  # of the VMs to it 
+  ############################################################
 
-    nodejs_host:
-      type: nodecellar.nodes.MonitoredServer
-      instances:
-          deploy: 1
-      properties:
-          network:
-            default_network: node_cellar_web_network
-          portmaps:
-              - protocol: TCP
-                private_port: 8080
-                private_end_port: 8080
-                public_port: 8080
-                public_end_port: 8080
-      relationships:
-          - target: node_cellar_web_network
-            type: cloudify.relationships.connected_to
-          - target: floatingip
-            type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
-          - target: mgmt_network
-            type: cloudify.cloudstack.virtual_machine_connected_to_network
+  mgmt_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: { get_input: management_network_resource_id }
+      use_external_resource: True
+      network:
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
 
-    mongod:
-      type: nodecellar.nodes.MongoDatabase
-      properties:
-        port: 27017
-      interfaces:
-        cloudify.interfaces.lifecycle:
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+    properties:
+      network:
+        default_network: node_cellar_db_network
+    relationships:
+      - target: node_cellar_db_network
+        type: cloudify.relationships.connected_to
+      - target: mgmt_network
+        type: cloudify.cloudstack.virtual_machine_connected_to_network
 
-        ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
-        ###########################################################
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+    properties:
+      network:
+        default_network: node_cellar_web_network
+      portmaps:
+          - protocol: TCP
+            private_port: 8080
+            private_end_port: 8080
+            public_port: 8080
+            public_end_port: 8080
+    relationships:
+      - target: node_cellar_web_network
+        type: cloudify.relationships.connected_to
+      - target: floatingip
+        type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
+      - target: mgmt_network
+        type: cloudify.cloudstack.virtual_machine_connected_to_network
 
-          configure: scripts/mongo/install-pymongo.sh
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
 
-        ###########################################################
-        # Notice that this node defines an additional collector
-        # to collect data on the MongoDB.
-        ###########################################################
+      ###########################################################
+      # The MongoDBCollector depends on a python library called
+      # pymongo. We install this library in the 'configure'
+      # lifecycle hook of this node.
+      ###########################################################
 
-        cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: "localhost:27017"
-      relationships:
-        - type: cloudify.relationships.contained_in
-          target: mongod_host
+        configure: scripts/mongo/install-pymongo.sh
 
-    nodejs:
-      type: nodecellar.nodes.NodeJSServer
-      relationships:
-        - type: cloudify.relationships.contained_in
-          target: nodejs_host
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
 
-    nodecellar:
-      type: nodecellar.nodes.NodecellarApplicationModule
-      properties:
-        port: 8080
-      relationships:
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              MongoDBCollector:
+                config:
+                  hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
 
-        ################################
-        # Setting the mongo connection
-        ################################
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
 
-        - type: node_connected_to_mongo
-          target: mongod
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
 
-        ################################
-        # Setting the nodejs connection
-        ################################
+      ################################
+      # Setting the mongo connection
+      ################################
 
-        - type: node_contained_in_nodejs
-          target: nodejs
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
 
 outputs:
   endpoint:

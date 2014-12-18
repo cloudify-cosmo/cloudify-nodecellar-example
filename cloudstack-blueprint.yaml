@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-cloudstack-plugin/1.1/plugin.yaml.template
+    - http://www.getcloudify.org/spec/cloudstack-plugin/1.1/plugin.yaml
     - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
     - types/nodecellar.yaml
 
@@ -37,64 +37,64 @@ inputs:
 
 node_types:
 
-    nodecellar.nodes.MonitoredServer:
-      derived_from: cloudify.cloudstack.nodes.VirtualMachine
-      properties:
-        management_network_name:
-          default: { get_property: [mgmt_network, resource_id] }
-        portmaps:
-          default: {}
-        network:
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.cloudstack.nodes.VirtualMachine
+    properties:
+      management_network_name:
+        default: { get_property: [mgmt_network, resource_id] }
+      portmaps:
+        default: {}
+      network:
+        default:
+          default_network: node_cellar_network
+          ip_address: {}
+      cloudify_agent:
           default:
-            default_network: node_cellar_network
-            ip_address: {}
-        cloudify_agent:
-            default:
-              user: { get_input: agent_user }
-              port: 22
-        server:
-          default:
-            image_id: { get_input: image_id }
-            size: { get_input: image_size }
+            user: { get_input: agent_user }
+            port: 22
+      server:
+        default:
+          image_id: { get_input: image_id }
+          size: { get_input: image_size }
 
-      interfaces:
+    interfaces:
 
-        ###########################################################
-        # We are infact telling cloudify to install a diamond
-        # monitoring agent on the server.
-        #
-        # (see https://github.com/BrightcoveOS/Diamond)
-        ###########################################################
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
 
-        cloudify.interfaces.monitoring_agent:
-            install:
-              implementation: diamond.diamond_agent.tasks.install
-              inputs:
-                diamond_config:
-                  default:
-                    interval: 1
-            start: diamond.diamond_agent.tasks.start
-            stop: diamond.diamond_agent.tasks.stop
-            uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring_agent:
+        install:
+          implementation: diamond.diamond_agent.tasks.install
+          inputs:
+            diamond_config:
+              default:
+                interval: 1
+        start: diamond.diamond_agent.tasks.start
+        stop: diamond.diamond_agent.tasks.stop
+        uninstall: diamond.diamond_agent.tasks.uninstall
 
-        ###########################################################
-        # Adding some collectors. These collectors are necessary
-        # for the Cloudify UI to display the deafult metrics.
-        ###########################################################
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
 
-        cloudify.interfaces.monitoring:
-            start:
-              implementation: diamond.diamond_agent.tasks.add_collectors
-              inputs:
-                collectors_config:
-                  default:
-                    CPUCollector: {}
-                    MemoryCollector: {}
-                    LoadAverageCollector: {}
-                    DiskUsageCollector:
-                      config:
-                        devices: x?vd[a-z]+[0-9]*$
-                    NetworkCollector: {}
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              default:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector:
+                  config:
+                    devices: x?vd[a-z]+[0-9]*$
+                NetworkCollector: {}
 
 node_templates:
 
@@ -105,21 +105,26 @@ node_templates:
     node_cellar_network:
       type: cloudify.cloudstack.nodes.Network
       properties:
-          resource_id: node_cellar_network
-          network:
-            service_offering: { get_input: cloudstack_network_service_offering }
-            zone: { get_input: cloudstack_zone }
-            gateway: 10.4.1.1
-            netmask: 255.255.255.0
-          firewall:
-            - type: ingress
-              protocol: TCP
-              cidr: 0.0.0.0/0
-              ports: [8080]
-            - type: egress
-              protocol: TCP
-              cidr: 0.0.0.0/0
-              ports: [80, 443]
+        resource_id: node_cellar_network
+        network:
+          service_offering: { get_input: cloudstack_network_service_offering }
+          zone: { get_input: cloudstack_zone }
+          gateway: 10.4.1.1
+          netmask: 255.255.255.0
+        firewall:
+          - type: ingress
+            protocol: TCP
+            cidr: 0.0.0.0/0
+            ports: [8080]
+          - type: egress
+            protocol: TCP
+            cidr: 0.0.0.0/0
+            ports: [80, 443]
+
+    ###########################################################
+    # A floating IP for the web application to be accesible 
+    # from the outside 
+    ###########################################################
 
     floatingip:
       type: cloudify.cloudstack.nodes.FloatingIP   
@@ -127,12 +132,12 @@ node_templates:
         floatingip:
           floating_network_name: node_cellar_network
       relationships:
-          - target: node_cellar_network
-            type: cloudify.cloudstack.floating_ip_connected_to_network
+        - target: node_cellar_network
+          type: cloudify.cloudstack.floating_ip_connected_to_network
 
     ############################################################
     # Define the management network so that we can connect each 
-    # the VMs to it 
+    # of the VMs to it 
     ############################################################
 
     mgmt_network:
