@@ -3,6 +3,7 @@
 ![alt text](http://img.shields.io/badge/nodecellar--openstack-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack--nova--net-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--cloudstack-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--cloudstack--vpc-manually--tested-yellow.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--ec2-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
