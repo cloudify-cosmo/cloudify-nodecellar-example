@@ -19,7 +19,6 @@ inputs:
   agent_user:
     description: >
       User for connecting to application VMs
-    default: root
 
   cloudstack_zone:
     description: >
@@ -33,20 +32,32 @@ inputs:
     description: >
       The name of the cloudify management network created during the manager bootstrap process 
 
-
 node_types:
+
+  ###########################################################
+  # We define a type that inherits cloudstack's default
+  # virtual machine, and adds monitoring
+  # capabillities on top of it.
+  #
+  # One thing to note here:
+  #
+  #  - We use our 'management_network_resource_id' input
+  #    as the default value for the management network name.
+  #
+  #    This will be used for letting the management machine
+  #    know which ip it should connect to when installing
+  #    agents.
+  #
+  ###########################################################
 
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.cloudstack.nodes.VirtualMachine
     properties:
       management_network_name:
-        default: { get_property: [mgmt_network, resource_id] }
-      portmaps:
-        default: {}
-      network:
-        default:
-          default_network: node_cellar_network
-          ip_address: {}
+        default: { get_input: management_network_resource_id }
+      cloudify_agent:
+          default:
+            user: { get_input: agent_user }
       server:
         default:
           image_id: { get_input: image_id }
@@ -97,77 +108,108 @@ node_templates:
   # A network for the web part of the application 
   ###########################################################
 
-  node_cellar_web_network:
+  nodecellar_web_network:
     type: cloudify.cloudstack.nodes.Network
     properties:
-      resource_id: node_cellar_web_network
+      resource_id: nodecellar_web_network
       network:
           vpc: { get_property: [nodecellar_vpc, resource_id] }
-          service_offering: 'NiciraNvpVpcNetwork'
-          zone: 'BETA-SBP-DC-1'
+          service_offering: { get_input: cloudstack_network_service_offering }
+          zone: { get_input: cloudstack_zone }
           gateway: 10.5.1.1
           netmask: 255.255.255.0
       firewall:
+
+        ###########################################################
+        # Allow incoming traffic to the nodecellar application
+        # to pass the firewall
+        ###########################################################
+
         - type: ingress
           protocol: TCP
           cidr: 0.0.0.0/0
-          ports: [8080]
+          ports: [{ get_property: [nodecellar, port] }]
+
+        ###########################################################
+        # Allow outgoing traffic so that hosts can download
+        # resources from the internet.
+        ###########################################################
+
         - type: egress
           protocol: TCP
           cidr: 0.0.0.0/0
           ports: [80, 443]
+
+        ###########################################################
+        # Allow outgoing traffic so that host connected to
+        # this network can access the mongo data base.
+        ###########################################################
+
         - type: egress
           protocol: TCP
           cidr: 10.5.2.0/24
-          ports: [27017]
+          ports: [{ get_property: [mongod, port] }]
+
+    ###########################################################
+    # This network is part our VPC, so we need to wait
+    # for the VPC to exist.
+    ###########################################################
+
     relationships:
-      - target: nodecellar_vpc
-        type: cloudify.relationships.contained_in
+      - type: cloudify.relationships.contained_in
+        target: nodecellar_vpc
 
   ###########################################################
-  # A network for the web part of the mongo database 
+  # A network for the data tier of the application
   ###########################################################
 
-  node_cellar_db_network:
+  nodecellar_db_network:
     type: cloudify.cloudstack.nodes.Network
     properties:
-      resource_id: node_cellar_db_network
+      resource_id: nodecellar_db_network
       network:
         vpc: { get_property: [nodecellar_vpc, resource_id] }
-        service_offering: 'NiciraNvpVpcNetwork'
-        zone: 'BETA-SBP-DC-1'
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
         gateway: 10.5.2.1
         netmask: 255.255.255.0
       firewall:
-        - type: ingress
-          protocol: TCP
-          cidr: 0.0.0.0/0
-          ports: [8080]
-        - type: egress
-          protocol: TCP
-          cidr: 0.0.0.0/0
-          ports: [80, 443]
+
+        ###########################################################
+        # Allow incoming traffic to the mongo data base
+        # to pass the firewall
+        ###########################################################
+
         - type: ingress
           protocol: TCP
           cidr: 10.5.1.0/24
-          ports: [27017]
+          ports: [{ get_property: [mongod, port] }]
+
+    ###########################################################
+    # This network is part our VPC, so we need to wait
+    # for the VPC to exist.
+    ###########################################################
+
     relationships:
-      - target: nodecellar_vpc
-        type: cloudify.relationships.contained_in
+      - type: cloudify.relationships.contained_in
+        target: nodecellar_vpc
 
   ###########################################################
   # A floating IP for the web application to be accesible 
   # from the outside 
   ###########################################################
 
-  floatingip:
-    type: cloudify.cloudstack.nodes.FloatingIP    
-    properties:
-      floatingip:
-        floating_network_name: node_cellar_network
+  nodecellar_floatingip:
+    type: cloudify.cloudstack.nodes.FloatingIP
     relationships:
-        - target: node_cellar_web_network
-          type: cloudify.cloudstack.floating_ip_connected_to_network
+
+        ###########################################################
+        # Notice we are assigning an IP from the dedicated
+        # application network
+        ###########################################################
+
+      - type: cloudify.cloudstack.floating_ip_connected_to_network
+        target: nodecellar_web_network
 
   ###########################################################
   # A VPC for the entire application 
@@ -179,22 +221,8 @@ node_templates:
         resource_id: nodecellar-vpc
         network:
             service_offering: 'Default VPC offering'
-            zone: BETA-SBP-DC-1
+            zone: { get_input: cloudstack_zone }
             cidr: 10.5.0.0/16
-
-  ############################################################
-  # Define the management network so that we can connect each 
-  # of the VMs to it 
-  ############################################################
-
-  mgmt_network:
-    type: cloudify.cloudstack.nodes.Network
-    properties:
-      resource_id: { get_input: management_network_resource_id }
-      use_external_resource: True
-      network:
-        service_offering: { get_input: cloudstack_network_service_offering }
-        zone: { get_input: cloudstack_zone }
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
@@ -202,12 +230,16 @@ node_templates:
       deploy: 1
     properties:
       network:
-        default_network: node_cellar_db_network
+        default_network: nodecellar_db_network
     relationships:
-      - target: node_cellar_db_network
-        type: cloudify.relationships.connected_to
-      - target: mgmt_network
-        type: cloudify.cloudstack.virtual_machine_connected_to_network
+
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all existing networks.
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: nodecellar_db_network
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
@@ -215,20 +247,29 @@ node_templates:
       deploy: 1
     properties:
       network:
-        default_network: node_cellar_web_network
+        default_network: nodecellar_web_network
       portmaps:
-          - protocol: TCP
-            private_port: 8080
-            private_end_port: 8080
-            public_port: 8080
-            public_end_port: 8080
+        - protocol: TCP
+          private_port: { get_property: [ nodecellar, port ] }
+          private_end_port: { get_property: [ nodecellar, port ] }
+          public_port: { get_property: [ nodecellar, port ] }
+          public_end_port: { get_property: [ nodecellar, port ] }
     relationships:
-      - target: node_cellar_web_network
-        type: cloudify.relationships.connected_to
-      - target: floatingip
-        type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
-      - target: mgmt_network
-        type: cloudify.cloudstack.virtual_machine_connected_to_network
+
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all existing networks.
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: nodecellar_web_network
+
+      ###########################################################
+      # Attach the floating ip to the nodejs host
+      ###########################################################
+
+      - type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
+        target: nodecellar_floatingip
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -292,6 +333,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
 

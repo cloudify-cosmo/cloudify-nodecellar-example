@@ -1,10 +1,10 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-    - http://www.getcloudify.org/spec/cloudstack-plugin/1.1/plugin.yaml
-    - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
-    - types/nodecellar.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudstack-plugin/1.1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
+  - types/nodecellar.yaml
 
 inputs:
 
@@ -19,7 +19,6 @@ inputs:
   agent_user:
     description: >
       User for connecting to application VMs
-    default: root
 
   cloudstack_zone:
     description: >
@@ -31,31 +30,49 @@ inputs:
 
   management_network_resource_id:
     description: >
-      The name of the cloudify management network created during the manager bootstrap process 
+      The name of the cloudify management network created during the manager bootstrap process
 
-
+  nodecellar_network_resource_id:
+    description: >
+      The name of the dedicated application network to be created.
+    default: nodecellar_network
 
 node_types:
+
+  ###########################################################
+  # We define a type that inherits cloudstack's default
+  # virtual machine, and adds monitoring
+  # capabillities on top of it.
+  #
+  # Two things to note here:
+  #
+  #  - We use our 'management_network_resource_id' input
+  #    as the default value for the management network name.
+  #
+  #    This will be used for letting the management machine
+  #    know which ip it should connect to when installing
+  #    agents.
+  #
+  #  - We use our 'nodecellar_network_resource_id' input
+  #    as the default value for the host network.
+  #
+  ###########################################################
 
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.cloudstack.nodes.VirtualMachine
     properties:
       management_network_name:
-        default: { get_property: [mgmt_network, resource_id] }
-      portmaps:
-        default: {}
-      network:
-        default:
-          default_network: node_cellar_network
-          ip_address: {}
+        default: { get_input: management_network_resource_id }
       cloudify_agent:
           default:
             user: { get_input: agent_user }
-            port: 22
       server:
         default:
           image_id: { get_input: image_id }
           size: { get_input: image_size }
+      network:
+        default:
+          default_network: { get_input: nodecellar_network_resource_id }
 
     interfaces:
 
@@ -98,157 +115,173 @@ node_types:
 
 node_templates:
 
-    ###########################################################
-    # A new network dedicated for the application
-    ###########################################################
+  ###########################################################
+  # A new network dedicated for the application. This will
+  # be the default network for hosts.
+  ###########################################################
 
-    node_cellar_network:
-      type: cloudify.cloudstack.nodes.Network
-      properties:
-        resource_id: node_cellar_network
-        network:
-          service_offering: { get_input: cloudstack_network_service_offering }
-          zone: { get_input: cloudstack_zone }
-          gateway: 10.4.1.1
-          netmask: 255.255.255.0
-        firewall:
-          - type: ingress
-            protocol: TCP
-            cidr: 0.0.0.0/0
-            ports: [8080]
-          - type: egress
-            protocol: TCP
-            cidr: 0.0.0.0/0
-            ports: [80, 443]
-
-    ###########################################################
-    # A floating IP for the web application to be accesible 
-    # from the outside 
-    ###########################################################
-
-    floatingip:
-      type: cloudify.cloudstack.nodes.FloatingIP   
-      properties:
-        floatingip:
-          floating_network_name: node_cellar_network
-      relationships:
-        - target: node_cellar_network
-          type: cloudify.cloudstack.floating_ip_connected_to_network
-
-    ############################################################
-    # Define the management network so that we can connect each 
-    # of the VMs to it 
-    ############################################################
-
-    mgmt_network:
-      type: cloudify.cloudstack.nodes.Network
-      properties:
-        resource_id: { get_input: management_network_resource_id }
-        use_external_resource: True
-        network:
-          service_offering: { get_input: cloudstack_network_service_offering }
-          zone: { get_input: cloudstack_zone }
-
-    mongod_host:
-      type: nodecellar.nodes.MonitoredServer
-      instances:
-        deploy: 1
-      relationships:
-        - target: node_cellar_network
-          type: cloudify.relationships.connected_to
-        - target: mgmt_network
-          type: cloudify.cloudstack.virtual_machine_connected_to_network
-
-    nodejs_host:
-      type: nodecellar.nodes.MonitoredServer
-      instances:
-        deploy: 1
-      properties:
-        portmaps:
-          - protocol: TCP
-            private_port: 8080
-            private_end_port: 8080
-            public_port: 8080
-            public_end_port: 8080
-            open_firewall: True
-          - protocol: TCP
-            private_port: 8081
-            private_end_port: 8081
-            public_port: 8081
-            public_end_port: 8081
-            open_firewall: False
-
-      relationships:
-        - target: node_cellar_network
-          type: cloudify.relationships.connected_to
-        - target: floatingip
-          type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
-        - target: mgmt_network
-          type: cloudify.cloudstack.virtual_machine_connected_to_network
-
-
-    mongod:
-      type: nodecellar.nodes.MongoDatabase
-      properties:
-        port: 27017
-      interfaces:
-        cloudify.interfaces.lifecycle:
+  nodecellar_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: { get_input: nodecellar_network_resource_id }
+      network:
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
+        gateway: 10.4.1.1
+        netmask: 255.255.255.0
+      firewall:
 
         ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
+        # Allow incoming traffic to the application to pass
+        # the firewall
+        # be the default network for hosts.
         ###########################################################
 
-          configure: scripts/mongo/install-pymongo.sh
+        - type: ingress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [{ get_property: [ nodecellar, port ] }]
 
         ###########################################################
-        # Notice that this node defines an additional collector
-        # to collect data on the MongoDB.
+        # Allow outgoing traffic so that hosts can download
+        # resources from the internet.
         ###########################################################
 
-        cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: "localhost:27017"
-      relationships:
-        - type: cloudify.relationships.contained_in
-          target: mongod_host
+        - type: egress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [80, 443]
 
-    nodejs:
-      type: nodecellar.nodes.NodeJSServer
-      relationships:
-        - type: cloudify.relationships.contained_in
-          target: nodejs_host
+  ###########################################################
+  # A floating IP for the web application to be accesible
+  # from the outside
+  ###########################################################
 
-    nodecellar:
-      type: nodecellar.nodes.NodecellarApplicationModule
-      properties:
-        port: 8080
-      relationships:
+  nodecellar_floatingip:
+    type: cloudify.cloudstack.nodes.FloatingIP
+    relationships:
 
-        ################################
-        # Setting the mongo connection
-        ################################
+      ###########################################################
+      # Notice we are assigning an IP from the dedicated
+      # application network
+      ###########################################################
 
-        - type: node_connected_to_mongo
-          target: mongod
+      - type: cloudify.cloudstack.floating_ip_connected_to_network
+        target: nodecellar_network
 
-        ################################
-        # Setting the nodejs connection
-        ################################
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+    relationships:
 
-        - type: node_contained_in_nodejs
-          target: nodejs
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all existing networks.
+      ###########################################################
+
+      - type: cloudify.relationships.depends_on
+        target: nodecellar_network
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+    properties:
+      portmaps:
+        - protocol: TCP
+          private_port: { get_property: [ nodecellar, port ] }
+          private_end_port: { get_property: [ nodecellar, port ] }
+          public_port: { get_property: [ nodecellar, port ] }
+          public_end_port: { get_property: [ nodecellar, port ] }
+          open_firewall: True
+        - protocol: TCP
+          private_port: 8081
+          private_end_port: 8081
+          public_port: 8081
+          public_end_port: 8081
+          open_firewall: False
+
+    relationships:
+
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all existing networks.
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: nodecellar_network
+
+      ###########################################################
+      # Attach the floating ip to the nodejs host
+      ###########################################################
+
+      - type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
+        target: nodecellar_floatingip
+
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+      ###########################################################
+      # The MongoDBCollector depends on a python library called
+      # pymongo. We install this library in the 'configure'
+      # lifecycle hook of this node.
+      ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              MongoDBCollector:
+                config:
+                  hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
 
 outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
 
