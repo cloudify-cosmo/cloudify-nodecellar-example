@@ -105,6 +105,22 @@ node_types:
 node_templates:
 
   ###########################################################
+  # This node represents the existing management
+  # network created by the bootstrap process.
+  # Agent VM's will be connected to this network,
+  # making them accessible from the management machine.
+  ###########################################################
+
+  management_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: { get_input: management_network_resource_id }
+      use_external_resource: True
+      network:
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
+
+  ###########################################################
   # A network for the web part of the application 
   ###########################################################
 
@@ -241,6 +257,14 @@ node_templates:
       - type: cloudify.relationships.connected_to
         target: nodecellar_db_network
 
+      ###########################################################
+      # We need this relationship in order to retrieve the
+      # management network id when creating agent VM's
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: management_network
+
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     instances:
@@ -263,6 +287,14 @@ node_templates:
 
       - type: cloudify.relationships.connected_to
         target: nodecellar_web_network
+
+      ###########################################################
+      # We need this relationship in order to retrieve the
+      # management network id when creating agent VM's
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: management_network
 
       ###########################################################
       # Attach the floating ip to the nodejs host
