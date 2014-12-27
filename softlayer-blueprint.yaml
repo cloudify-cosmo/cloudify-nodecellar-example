@@ -1,6 +1,6 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on an openstack cloud environment.
+# on a softlayer cloud environment.
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_0
@@ -22,17 +22,32 @@ imports:
 inputs:
 
   location: 
-    default: 352494 # Hong Kong 2
+    description: >
+      Location of the data center
+      Default value is the location id of Hong kong 2
+    default: 352494
   domain: 
     default: nodecellar.cloudify.org
   ram: 
-    default: 1017 # 16 GB
+    description: >
+      Item id of the ram
+      Default value is the item id of 16 GB
+    default: 1017
   cpu: 
-    default: 859 # 4 x 2.0 GHz Cores
+    description: >
+      Item id of the cpu
+      DEfault value is the item id of 4 x 2.0 GHz Cores
+    default: 859
   disk: 
-    default: 1178 # 25 GB (SAN)
+    description: >
+      Item id of the disk
+      DEfault value is the item id of 25 GB (SAN)
+    default: 1178
   os: 
-    default: 4174 # Ubuntu Linux 12.04
+    description: >
+      Item id of the operating system
+      Default value is the item id of Ubuntu Linux 12.04 
+    default: 4174
   ssh_keys:
     default: [121388]
 
