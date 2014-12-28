@@ -20,13 +20,13 @@ imports:
 #####################################################################################
 
 inputs:
-
   location: 
     description: >
       Location of the data center
       Default value is the location id of Hong kong 2
     default: 352494
   domain: 
+    description: The domain
     default: nodecellar.cloudify.org
   ram: 
     description: >
@@ -49,6 +49,7 @@ inputs:
       Default value is the item id of Ubuntu Linux 12.04 
     default: 4174
   ssh_keys:
+    description: A list of ssh key identifiers
     default: [121388]
 
   agent_user:
@@ -59,24 +60,27 @@ inputs:
 node_types:
 
   ###########################################################
-  # We define a type that inherits openstack's default
+  # We define a type that inherits softlayer's default
   # server, and adds monitoring capabillities on top of it.
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.softlayer.nodes.VirtualServer
-
     properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-      location: { get_input: agent_user }
-      domain: { get_input: agent_user }
-      ram: { get_input: agent_user }
-      cpu: { get_input: agent_user }
-      disk: { get_input: agent_user }
-      os: { get_input: agent_user }
-      ssh_keys: { get_input: agent_user }
+      location: 
+        default: { get_input: location }
+      domain: 
+        default: { get_input: domain }
+      ram:
+        default: { get_input: ram }
+      cpu: 
+        default: { get_input: cpu }
+      disk: 
+        default: { get_input: disk }
+      os: 
+        default: { get_input: os }
+      ssh_keys: 
+        default: { get_input: ssh_keys }
 
     interfaces:
 
