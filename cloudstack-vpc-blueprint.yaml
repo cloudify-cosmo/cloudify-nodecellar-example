@@ -24,7 +24,11 @@ inputs:
     description: >
       The CloudStack zone the application will be installed in
 
-  cloudstack_network_service_offering:
+  cloudstack_app_network_service_offering:
+    description: >
+      The CloudStack serviceoffering of the application network created by the blueprint
+
+  cloudstack_management_network_service_offering:
     description: >
       The CloudStack serviceoffering of the application network created by the blueprint
 
@@ -117,7 +121,7 @@ node_templates:
       resource_id: { get_input: management_network_resource_id }
       use_external_resource: True
       network:
-        service_offering: { get_input: cloudstack_network_service_offering }
+        service_offering: { get_input: cloudstack_management_network_service_offering }
         zone: { get_input: cloudstack_zone }
 
   ###########################################################
@@ -130,7 +134,7 @@ node_templates:
       resource_id: nodecellar_web_network
       network:
           vpc: { get_property: [nodecellar_vpc, resource_id] }
-          service_offering: { get_input: cloudstack_network_service_offering }
+          service_offering: { get_input: cloudstack_app_network_service_offering }
           zone: { get_input: cloudstack_zone }
           gateway: 10.5.1.1
           netmask: 255.255.255.0
@@ -185,7 +189,7 @@ node_templates:
       resource_id: nodecellar_db_network
       network:
         vpc: { get_property: [nodecellar_vpc, resource_id] }
-        service_offering: { get_input: cloudstack_network_service_offering }
+        service_offering: { get_input: cloudstack_app_network_service_offering }
         zone: { get_input: cloudstack_zone }
         gateway: 10.5.2.1
         netmask: 255.255.255.0
