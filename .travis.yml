@@ -1,4 +1,5 @@
 language: python
+sudo: false
 
 python:
   - 2.7
@@ -18,6 +19,8 @@ script:
     - cfy blueprints validate -p openstack-nova-net-blueprint.yaml
     - cfy blueprints validate -p singlehost-blueprint.yaml
     - cfy blueprints validate -p softlayer-blueprint.yaml
+    - cfy blueprints validate -p cloudstack-blueprint.yaml
+    - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
     - cfy local execute -w uninstall

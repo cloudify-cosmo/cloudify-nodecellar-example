@@ -1,5 +1,13 @@
 # Cloudify Nodecellar Example
 
+![alt text](http://img.shields.io/badge/nodecellar--openstack-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--openstack--nova--net-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--cloudstack-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--cloudstack--vpc-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--ec2-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
+
 This repository contains several blueprints for installing the
 [nodecellar](http://coenraets.org/blog/2012/10/nodecellar-sample-application-with-backbone-js-twitter-bootstrap-node-js-express-and-mongodb/)
 application.<br>
@@ -58,6 +66,8 @@ To uninstall the application we run the `uninstall` workflow: <br>
 - [Openstack Nova Net Blueprint](openstack-nova-net-blueprint.yaml)
 - [EC2 Blueprint](ec2-blueprint.yaml)
 - [Singlehost Blueprint](singlehost-blueprint.yaml)
+- [CloudStack Blueprint](cloudstack-blueprint.yaml)
+- [CloudStack VPC Blueprint](cloudstack-vpc-blueprint.yaml)
 
 All of these blueprints allow you to install the nodecellar application on different cloud environments.
 Doing this requires first to bootstrap a Cloudify Manager.<br>
@@ -76,15 +86,11 @@ Great, now that you have your very own Cloudify Manager, we can work with these 
 
 ### Step 3: Create a deployment
 
-Every one of these blueprints have inputs, which can be populated for a deployment using the input files. <br>
-The input files are located under the inputs directory. <br>
-All of them contain the following:
+Every one of these blueprints have inputs, which can be populated for a deployment using input files. <br>
+Example input files are located inside the *inputs* directory. <br>
+Note that these files only contain the **mandatory** inputs, i.e, one's that the blueprint does not define a default value for.
 
-- `image` - Image identifier for the agent VM's.
-- `flavor/size` - Flavor (Openstack) or Size (EC2) of the VM's.
-- `agent_user` - Since the username of a VM depends on the image, specify here the user name for your image.
-
-After you entered all of these values, run: <br>
+After you filled the input file corresponding to your blueprint, run: <br>
 
 `cfy deployments create -b <blueprint_id> -d <choose_deployment_id> -i inputs/<inputs_filename>`
 
