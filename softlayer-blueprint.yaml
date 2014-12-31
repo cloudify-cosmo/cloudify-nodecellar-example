@@ -36,12 +36,12 @@ inputs:
   cpu: 
     description: >
       Item id of the cpu
-      DEfault value is the item id of 4 x 2.0 GHz Cores
+      Default value is the item id of 4 x 2.0 GHz Cores
     default: 859
   disk: 
     description: >
       Item id of the disk
-      DEfault value is the item id of 25 GB (SAN)
+      Default value is the item id of 25 GB (SAN)
     default: 1178
   os: 
     description: >
