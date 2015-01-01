@@ -48,9 +48,6 @@ inputs:
       Item id of the operating system
       Default value is the item id of Ubuntu Linux 12.04 
     default: 4174
-  ssh_keys:
-    description: A list of ssh key identifiers
-    default: [121388]
 
   agent_user:
     description: >
@@ -79,8 +76,6 @@ node_types:
         default: { get_input: disk }
       os: 
         default: { get_input: os }
-      ssh_keys: 
-        default: { get_input: ssh_keys }
 
     interfaces:
 
