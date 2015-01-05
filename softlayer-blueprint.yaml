@@ -1,0 +1,197 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on a softlayer cloud environment.
+###########################################################
+
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2m2/types.yaml
+  - http://www.getcloudify.org/spec/softlayer-plugin/1.2m2/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2m2/plugin.yaml
+  - types/nodecellar.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
+inputs:
+  location: 
+    description: >
+      Location of the data center
+      Default value is the location id of Hong kong 2
+    default: 352494
+  domain: 
+    description: The domain
+    default: nodecellar.cloudify.org
+  ram: 
+    description: >
+      Item id of the ram
+      Default value is the item id of 16 GB
+    default: 1017
+  cpu: 
+    description: >
+      Item id of the cpu
+      Default value is the item id of 4 x 2.0 GHz Cores
+    default: 859
+  disk: 
+    description: >
+      Item id of the disk
+      Default value is the item id of 25 GB (SAN)
+    default: 1178
+  os: 
+    description: >
+      Item id of the operating system
+      Default value is the item id of Ubuntu Linux 12.04 
+    default: 4174
+
+  agent_user:
+    description: >
+      User for connecting to agent VM's
+    default: 'root'
+
+node_types:
+
+  ###########################################################
+  # We define a type that inherits softlayer's default
+  # server, and adds monitoring capabillities on top of it.
+  ###########################################################
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.softlayer.nodes.VirtualServer
+    properties:
+      location: 
+        default: { get_input: location }
+      domain: 
+        default: { get_input: domain }
+      ram:
+        default: { get_input: ram }
+      cpu: 
+        default: { get_input: cpu }
+      disk: 
+        default: { get_input: disk }
+      os: 
+        default: { get_input: os }
+
+    interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                default:
+                  interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                default:
+                  CPUCollector: {}
+                  MemoryCollector: {}
+                  LoadAverageCollector: {}
+                  DiskUsageCollector:
+                    config:
+                      devices: x?vd[a-z]+[0-9]*$
+                  NetworkCollector: {}
+
+node_templates:
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [nodejs_host, public_ip] }
+      port: { get_property: [nodecellar, port] }
