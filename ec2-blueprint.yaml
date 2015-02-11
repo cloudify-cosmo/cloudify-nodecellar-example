@@ -6,9 +6,9 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.2m4/types.yaml
-  - http://www.getcloudify.org/spec/libcloud-plugin/1.2m4/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.2m4/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.2m5/types.yaml
+  - http://www.getcloudify.org/spec/libcloud-plugin/1.2m5/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2m5/plugin.yaml
   - types/nodecellar.yaml
 
 #####################################################################################
