@@ -1,0 +1,6 @@
+agent_user: ubuntu
+frontend_image_name: ubuntu_12.04
+frontend_flavor_name: m1.small
+backend_image_name: ubuntu_12.04
+backend_flavor_name: m1.small
+backend_app_port: 8000

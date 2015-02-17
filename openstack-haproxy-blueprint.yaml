@@ -1,0 +1,196 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-manager/CFY-2043-auto-scale-workflow/resources/rest-service/cloudify/types/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.2m5/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2m5/plugin.yaml
+  - types/nodecellar.yaml
+  - types/haproxy.yaml
+
+inputs:
+
+  agent_user:
+    type: string
+    default: ubuntu
+
+  frontend_image_name:
+    type: string
+    default: ubuntu_12.04
+
+  frontend_flavor_name:
+    type: string
+    default: m1.small
+
+  backend_image_name:
+    type: string
+    default: ubuntu_12.04
+
+  backend_flavor_name:
+    type: string
+    default: m1.small
+
+  backend_app_port:
+    type: integer
+    default: 8000
+
+node_types:
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.openstack.nodes.Server
+    properties:
+      cloudify_agent:
+        default:
+          user: { get_input: agent_user }
+      server:
+        default:
+          image_name: { get_input: backend_image_name }
+          flavor_name: { get_input: backend_flavor_name }
+    interfaces:
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                default:
+                  interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              default:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector:
+                  config:
+                    devices: x?vd[a-z]+[0-9]*$
+                NetworkCollector: {}
+
+node_templates:
+
+  frontend_floatingip:
+    type: cloudify.openstack.nodes.FloatingIP
+
+  haproxy_frontend_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: haproxy_frontend_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, frontend_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 9000
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: frontend_floatingip
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: haproxy_frontend_security_group
+
+  haproxy:
+    type: haproxy.nodes.Proxy
+    properties:
+      default_backend: servers
+      global_maxconn: 256
+      mode: http
+      frontend_port: 80
+      timeout_connect: 5000
+      timeout_client: 50000
+      timeout_server: 50000
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
+    interfaces:
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                HAProxyCollector:
+                  config:
+                    url: http://127.0.0.1:9000/haproxy_stats;csv
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 2
+    relationships:
+      - target: nodecellar_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: { get_input: backend_app_port }
+    relationships:
+      - type: node_connected_to_mongo
+        target: mongod
+      - type: node_contained_in_nodejs
+        target: nodejs
+      - type: app_connected_to_haproxy
+        target: haproxy
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+      - target: mongod_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure: scripts/mongo/install-pymongo.sh
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: localhost:27017
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  mongod_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: mongod_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ mongod, port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 28017
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ frontend_floatingip, floating_ip_address ] }
+      port: { get_input: backend_app_port }
