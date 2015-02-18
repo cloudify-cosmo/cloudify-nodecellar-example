@@ -9,29 +9,17 @@ imports:
 
 inputs:
 
+  image:
+    description: >
+      Image to be used when launching agent VM's
+
+  flavor:
+    description: >
+      Flavor of the agent VM's
+
   agent_user:
-    type: string
-    default: ubuntu
-
-  frontend_image_name:
-    type: string
-    default: ubuntu_12.04
-
-  frontend_flavor_name:
-    type: string
-    default: m1.small
-
-  backend_image_name:
-    type: string
-    default: ubuntu_12.04
-
-  backend_flavor_name:
-    type: string
-    default: m1.small
-
-  backend_app_port:
-    type: integer
-    default: 8000
+    description: >
+      User for connecting to agent VM's
 
 node_types:
 
@@ -43,8 +31,8 @@ node_types:
           user: { get_input: agent_user }
       server:
         default:
-          image_name: { get_input: backend_image_name }
-          flavor_name: { get_input: backend_flavor_name }
+          image: { get_input: image }
+          flavor: { get_input: flavor }
     interfaces:
       cloudify.interfaces.monitoring_agent:
           install:
@@ -143,7 +131,7 @@ node_templates:
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
     properties:
-      port: { get_input: backend_app_port }
+      port: 8080
     relationships:
       - type: node_connected_to_mongo
         target: mongod
@@ -193,4 +181,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ frontend_floatingip, floating_ip_address ] }
-      port: { get_input: backend_app_port }
+      port: { get_property: [haproxy, frontend_port] }
