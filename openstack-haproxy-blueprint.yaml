@@ -1,3 +1,8 @@
+###########################################################
+# This Blueprint installs the nodecellar application behind
+# an haproxy instance on an openstack cloud environment.
+###########################################################
+
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
@@ -6,6 +11,14 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m5/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
+#####################################################################################
 
 inputs:
 
@@ -23,6 +36,11 @@ inputs:
 
 node_types:
 
+  ###########################################################
+  # We define a type that inherits openstack's default
+  # server, and adds monitoring capabillities on top of it.
+  ###########################################################
+
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.openstack.nodes.Server
     properties:
@@ -34,6 +52,14 @@ node_types:
           image: { get_input: image }
           flavor: { get_input: flavor }
     interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
       cloudify.interfaces.monitoring_agent:
           install:
             implementation: diamond.diamond_agent.tasks.install
@@ -44,6 +70,12 @@ node_types:
           start: diamond.diamond_agent.tasks.start
           stop: diamond.diamond_agent.tasks.stop
           uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
+
       cloudify.interfaces.monitoring:
         start:
           implementation: diamond.diamond_agent.tasks.add_collectors
@@ -60,91 +92,56 @@ node_types:
 
 node_templates:
 
-  frontend_floatingip:
-    type: cloudify.openstack.nodes.FloatingIP
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
 
-  haproxy_frontend_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: haproxy_frontend_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, frontend_port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 9000
+      ###########################################################
+      # Attaching the mongo security group to the mongo host
+      ###########################################################
+
+      - target: mongod_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
+
+    relationships:
+
+      ###########################################################
+      # Attaching the nodecellar security group to
+      # the nodecellar host
+      ###########################################################
+
+      - target: nodecellar_security_group
+        type: cloudify.openstack.server_connected_to_security_group
 
   haproxy_frontend_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
+
+      ###########################################################
+      # Attaching a floating ip to the haproxy frontend host
+      ###########################################################
+
       - type: cloudify.openstack.server_connected_to_floating_ip
         target: frontend_floatingip
+
+      ###########################################################
+      # Attaching the haproxy frontend security group to
+      # the haproxy frontend host
+      ###########################################################
+
       - type: cloudify.openstack.server_connected_to_security_group
         target: haproxy_frontend_security_group
-
-  haproxy:
-    type: haproxy.nodes.Proxy
-    properties:
-      default_backend: servers
-      global_maxconn: 256
-      mode: http
-      frontend_port: 80
-      timeout_connect: 5000
-      timeout_client: 50000
-      timeout_server: 50000
-    relationships:
-      - target: haproxy_frontend_host
-        type: cloudify.relationships.contained_in
-    interfaces:
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                HAProxyCollector:
-                  config:
-                    url: http://127.0.0.1:9000/haproxy_stats;csv
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
-  nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
-    instances:
-      deploy: 2
-    relationships:
-      - target: nodecellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
-
-  nodecellar:
-    type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
-    relationships:
-      - type: node_connected_to_mongo
-        target: mongod
-      - type: node_contained_in_nodejs
-        target: nodejs
-      - type: app_connected_to_haproxy
-        target: haproxy
-
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
-    relationships:
-      - target: mongod_security_group
-        type: cloudify.openstack.server_connected_to_security_group
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -152,7 +149,20 @@ node_templates:
       port: 27017
     interfaces:
       cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
         configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
       cloudify.interfaces.monitoring:
           start:
             implementation: diamond.diamond_agent.tasks.add_collectors
@@ -165,6 +175,99 @@ node_templates:
       - type: cloudify.relationships.contained_in
         target: mongod_host
 
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
+  haproxy:
+    type: haproxy.nodes.Proxy
+    properties:
+
+      ###########################################################
+      # This is the port that will be used by haproxy.
+      ###########################################################
+      frontend_port: 80
+
+      default_backend: servers
+      global_maxconn: 256
+      mode: http
+      timeout_connect: 5000
+      timeout_client: 50000
+      timeout_server: 50000
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
+    interfaces:
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the haproxy instance.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                HAProxyCollector:
+                  config:
+                    url: http://127.0.0.1:9000/haproxy_stats;csv
+
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+
+  ###########################################################
+  # A security group to enable access to the mongo host
+  # using the port of the mongo node.
+  #
+  # We need this so that the nodecellar application can
+  # comminicate with MongoDB, since they are running on
+  # different hosts.
+  ###########################################################
+
   mongod_security_group:
     type: cloudify.openstack.nodes.SecurityGroup
     properties:
@@ -175,6 +278,42 @@ node_templates:
           port: { get_property: [ mongod, port ] }
         - remote_ip_prefix: 0.0.0.0/0
           port: 28017
+
+  ###########################################################
+  # A security group to enable access to the haproxy frontend
+  # host using the haproxy frontend_port property.
+  # In addition, we open the statistics port (9000) of haproxy
+  #
+  # This security group will be attached to the
+  # haproxy_frontend_host
+  ###########################################################
+
+  haproxy_frontend_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: haproxy_frontend_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, frontend_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 9000
+
+  ###########################################################
+  # A floating ip to be attached to the haproxy frontend host,
+  # since eventually we want to be able to access the application
+  # from any machine, on any network.
+  ###########################################################
+
+  frontend_floatingip:
+    type: cloudify.openstack.nodes.FloatingIP
+
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
 
 outputs:
   endpoint:

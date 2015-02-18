@@ -1,10 +1,16 @@
+###########################################################
+# This file containes node type / relationship definitions
+# for installing, configuring and managing an haproxy
+# instance.
+###########################################################
+
 node_types:
 
   haproxy.nodes.Proxy:
     derived_from: cloudify.nodes.ApplicationServer
     properties:
       frontend_port:
-        description: The port for HAProxy to listen.
+        description: The port for HAProxy to listen on.
         type: integer
         default: 80
       global_maxconn:
