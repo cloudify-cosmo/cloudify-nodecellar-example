@@ -107,7 +107,7 @@ def _service(state):
          error_message='Failed setting state to {0}'.format(state))
 
 
-def _run(command, log_message, error_message):
+def _run(command, error_message):
     runner = utils.LocalCommandRunner(logger=ctx.logger)
     try:
         runner.run(command)
