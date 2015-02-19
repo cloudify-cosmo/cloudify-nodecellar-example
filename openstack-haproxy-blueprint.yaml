@@ -208,6 +208,12 @@ node_templates:
       - type: app_connected_to_haproxy
         target: haproxy
 
+
+  ########################################
+  # Note: only ubuntu haproxy installation
+  # is supported.
+  ########################################
+
   haproxy:
     type: haproxy.nodes.Proxy
     properties:
@@ -217,12 +223,14 @@ node_templates:
       ###########################################################
       frontend_port: 80
 
-      default_backend: servers
-      global_maxconn: 256
-      mode: http
-      timeout_connect: 5000
-      timeout_client: 50000
-      timeout_server: 50000
+      ###########################################################
+      # This is the port that will be used by haproxy to display
+      # statistics.
+      ###########################################################
+      statistics_port: 9000
+
+      backend_app_port: { get_property: [ nodecellar, port ] }
+
     relationships:
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
@@ -231,6 +239,9 @@ node_templates:
       ###########################################################
       # Notice that this node defines an additional collector
       # to collect data on the haproxy instance.
+      # Also notice that in the URL, port 9000 is used. If you
+      # choose to change this port on the haproxy node template,
+      # this URL should be updated as well.
       ###########################################################
 
       cloudify.interfaces.monitoring:
@@ -297,7 +308,7 @@ node_templates:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ haproxy, frontend_port ] }
         - remote_ip_prefix: 0.0.0.0/0
-          port: 9000
+          port: { get_property: [ haproxy, statistics_port ]}
 
   ###########################################################
   # A floating ip to be attached to the haproxy frontend host,

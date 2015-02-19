@@ -22,14 +22,15 @@ from jinja2 import Template
 from cloudify_rest_client import exceptions as rest_exceptions
 from cloudify import ctx
 from cloudify.state import ctx_parameters as inputs
-from cloudify.exceptions import NonRecoverableError
+from cloudify import exceptions
+from cloudify import utils
 
 
 CONFIG_PATH = '/etc/haproxy/haproxy.cfg'
 TEMPLATE_RESOURCE_NAME = 'resources/haproxy/haproxy.cfg.template'
 
 
-def configure(initial=True, subject=None):
+def configure(subject=None):
     subject = subject or ctx
 
     ctx.logger.info('Configuring HAProxy.')
@@ -49,18 +50,11 @@ def configure(initial=True, subject=None):
     with tempfile.NamedTemporaryFile(delete=False) as temp_config:
         temp_config.write(template.render(config))
 
-    _run(['sudo', 'mv', temp_config.name, CONFIG_PATH],
-         log_message='Write validation: {0}.',
-         error_message='Failed to write to {0}.'.format(CONFIG_PATH))
-
-    _run(['sudo', '/usr/sbin/haproxy', '-f', CONFIG_PATH, '-c'],
-         log_message='Config Validation: {0}',
+    _run('sudo /usr/sbin/haproxy -f {0} -c'.format(temp_config.name),
          error_message='Failed to Configure')
 
-    if initial:
-        _run(['sudo', '/bin/sed', '-i', 's/ENABLED=0/ENABLED=1/', '/etc/default/haproxy'],
-             log_message='Enable service: {0}',
-             error_message='Failed enabling service')
+    _run('sudo mv {0} {1}'.format(temp_config.name, CONFIG_PATH),
+         error_message='Failed to write to {0}.'.format(CONFIG_PATH))
 
 
 def add_backend(port, maxconn, backend_address=None):
@@ -88,7 +82,7 @@ def _backends_update():
     # are only called with a fully update configuration
     try:
         ctx.target.instance.update()
-        configure(initial=False, subject=ctx.target)
+        configure(subject=ctx.target)
         service('reload')
     except rest_exceptions.CloudifyClientError as e:
         if 'conflict' in str(e):
@@ -99,20 +93,26 @@ def _backends_update():
         else:
             raise
 
-def service(state):
-    _run(['sudo', 'service', 'haproxy', state],
-         log_message='Setting service state to ' + state + ' :{0}',
+
+def start():
+    _service('start')
+
+
+def stop():
+    _service('stop')
+
+
+def _service(state):
+    _run('sudo service haproxy {0}'.format(state),
          error_message='Failed setting state to {0}'.format(state))
 
 
 def _run(command, log_message, error_message):
-    p = subprocess.Popen(command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    output = p.communicate()
-    ctx.logger.debug(log_message.format(output))
-    if p.returncode != 0:
-        raise NonRecoverableError(error_message)
+    runner = utils.LocalCommandRunner(logger=ctx.logger)
+    try:
+        runner.run(command)
+    except exceptions.CommandExecutionException as e:
+        raise NonRecoverableError('{0}: {1}'.format(error_message, e))
 
 
 def _main():

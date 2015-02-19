@@ -17,7 +17,7 @@ backend {{default_backend}}
     server {{ id }} {{ backend.address }}:{{ backend.port }} maxconn {{ backend.maxconn }}
 {% endfor %}
 
-listen stats 0.0.0.0:9000       #Listen on all IP's on port 9000
+listen stats 0.0.0.0:{{statistics_port}}
     mode http
     balance
     timeout client 5000

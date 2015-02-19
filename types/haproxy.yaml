@@ -13,6 +13,10 @@ node_types:
         description: The port for HAProxy to listen on.
         type: integer
         default: 80
+      statistics_port:
+        description: The port HAProxy will listen on for statistics requests.
+        type: integer
+        default: 9000
       global_maxconn:
         description: Max number of connections at a time.
         type: integer
@@ -39,6 +43,7 @@ node_types:
       default_backend:
         description: >
           The group name you choose for your backend targets.
+        default: servers
       backend_app_port:
         description: >
           The port that your application listens on.
@@ -63,15 +68,13 @@ node_types:
           inputs:
             invocation:
               default:
-                function: service
-                args: [start]
+                function: start
         stop:
           implementation: scripts/haproxy/haproxy.py
           inputs:
             invocation:
               default:
-                function: service
-                args: [stop]
+                function: stop
 
 relationships:
   app_connected_to_haproxy:
