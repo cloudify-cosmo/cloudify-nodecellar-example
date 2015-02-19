@@ -83,7 +83,7 @@ def _backends_update():
     try:
         ctx.target.instance.update()
         configure(subject=ctx.target)
-        service('reload')
+        _service('reload')
     except rest_exceptions.CloudifyClientError as e:
         if 'conflict' in str(e):
             # cannot 'return' in contextmanager
