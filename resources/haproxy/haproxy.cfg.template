@@ -1,0 +1,38 @@
+global
+	daemon
+	maxconn {{global_maxconn}}
+
+defaults
+	mode {{mode}}
+	timeout connect {{timeout_connect}}
+	timeout client {{timeout_client}}
+	timeout server {{timeout_server}}
+
+frontend {{frontend_id}}
+	bind *:{{frontend_port}}
+	default_backend {{default_backend}}
+
+backend {{default_backend}}
+{% for id, backend in backends.iteritems() %}
+    server {{ id }} {{ backend.address }}:{{ backend.port }} maxconn {{ backend.maxconn }}
+{% endfor %}
+
+listen stats 0.0.0.0:{{statistics_port}}
+    mode http
+    balance
+    timeout client 5000
+    timeout connect 4000
+    timeout server 30000
+
+    #This is the virtual URL to access the stats page
+    stats uri /haproxy_stats
+
+    #Authentication realm. This can be set to anything. Escape space characters with a backslash.
+    stats realm HAProxy\ Statistics
+
+    #The user/pass you want to use. Change this password!
+    stats auth admin:password
+
+    #This allows you to take down and bring up back end servers.
+    #This will produce an error on older versions of HAProxy.
+    stats admin if TRUE
