@@ -6,7 +6,7 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-manager/CFY-2043-auto-scale-workflow/resources/rest-service/cloudify/types/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.2m5/types.yaml
   - http://www.getcloudify.org/spec/openstack-plugin/1.2m5/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m5/plugin.yaml
   - types/nodecellar.yaml
