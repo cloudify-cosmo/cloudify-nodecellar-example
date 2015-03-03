@@ -49,11 +49,6 @@ inputs:
       Default value is the item id of Ubuntu Linux 12.04 
     default: 4174
 
-  agent_user:
-    description: >
-      User for connecting to agent VM's
-    default: 'root'
-
 node_types:
 
   ###########################################################
