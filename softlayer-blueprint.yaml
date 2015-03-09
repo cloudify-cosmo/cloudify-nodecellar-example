@@ -27,7 +27,7 @@ inputs:
     default: 352494
   domain: 
     description: The domain
-    default: nodecellar.cloudify.org
+    default: cloudify.org
   ram: 
     description: >
       Item id of the ram
@@ -115,9 +115,13 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      hostname: mongod-host
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      hostname: nodejs-host
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
