@@ -42,7 +42,7 @@ inputs:
       Name of the network that will be used for Cloudify management
     type: string
 
-  floating_ip_gateway:
+  edge_gateway:
     description: >
       The edge gateway ID
     type: string
@@ -56,11 +56,28 @@ inputs:
     default: 4096
     description: >
       memory amount for each server
-
+ 
   agent_public_key:
     type: string
 
+
 node_types:
+
+  nodecellar.nodes.AppNetwork:
+    derived_from: cloudify.vcloud.nodes.Network
+    properties:
+      network:
+        default:
+          edge_gateway: { get_input: edge_gateway }
+          name: nodecellar-network
+          static_range: 10.0.0.2-10.0.0.128
+          netmask: 255.255.255.0
+          gateway_ip: 10.0.0.1
+          dns: 10.0.0.1
+          dhcp:
+            dhcp_range: 10.0.0.129-10.0.0.254
+            default_lease: 3600
+            max_lease: 7200
 
   nodecellar.nodes.Server:
     derived_from: cloudify.vcloud.nodes.Server
@@ -86,8 +103,60 @@ node_types:
 
 node_templates:
 
+  management_network:
+    type: cloudify.vcloud.nodes.Network
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: management_network_name }
+
+  management_network_port:
+    type: cloudify.vcloud.nodes.Port
+    properties:
+      port:
+        network: { get_input: management_network_name }
+        ip_allocation_mode: pool
+        primary_interface: false
+
+  app_network:
+    type: nodecellar.nodes.AppNetwork
+    relationships:
+      - target: app_network_internet_access
+        type: cloudify.vcloud.net_connected_to_public_nat
+
+  app_network_port:
+    type: cloudify.vcloud.nodes.Port
+    properties:
+      port:
+        network: nodecellar-network
+#        fails to process
+#        network: { get_attribute: [ app_network, vcloud_network_name ] }
+        ip_allocation_mode: pool
+        primary_interface: true
+#    relationships:
+#      - target: app_network
+#        type: cloudify.vcloud.port_connected_to_network
+
+  app_network_internet_access:
+    type: cloudify.vcloud.nodes.PublicNAT
+    properties:
+      nat:
+        edge_gateway: { get_input: edge_gateway }
+      rules:
+        type:
+          - SNAT
+
   mongod_host:
     type: nodecellar.nodes.Server
+    relationships:
+
+      ###########################################################
+      # Attaching the mongo security group to the mongo host
+      ###########################################################
+
+      - target: app_network_port
+        type: cloudify.vcloud.server_connected_to_port
+      - target: management_network_port
+        type: cloudify.vcloud.server_connected_to_port
 
   nodejs_host:
     type: nodecellar.nodes.Server
@@ -99,6 +168,17 @@ node_templates:
 
     instances:
       deploy: 2
+    relationships:
+
+      ###########################################################
+      # Attaching the nodecellar security group to
+      # the nodecellar host
+      ###########################################################
+
+      - target: app_network_port
+        type: cloudify.vcloud.server_connected_to_port
+      - target: management_network_port
+        type: cloudify.vcloud.server_connected_to_port
 
   haproxy_frontend_host:
     type: nodecellar.nodes.Server
@@ -118,6 +198,10 @@ node_templates:
 
 #      - type: cloudify.vcloud.server_connected_to_security_group
 #        target: haproxy_frontend_security_group
+      - target: app_network_port
+        type: cloudify.vcloud.server_connected_to_port
+      - target: management_network_port
+        type: cloudify.vcloud.server_connected_to_port
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -298,7 +382,7 @@ node_templates:
     type: cloudify.vcloud.nodes.FloatingIP
     properties:
       floatingip:
-        edge_gateway: { get_input: floating_ip_gateway }
+        edge_gateway: { get_input: edge_gateway }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
