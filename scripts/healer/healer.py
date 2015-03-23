@@ -17,6 +17,7 @@ import sys
 import json
 import datetime
 import os
+import contextlib
 
 from influxdb.influxdb08 import InfluxDBClient
 
@@ -26,10 +27,9 @@ from cloudify_rest_client.exceptions import CloudifyClientError
 
 
 def cooldown_expired():
-    if os.path.isfile(cooldown_file):
+    with state() as s:
         now = datetime.datetime.now()
-        then = datetime.datetime.fromtimestamp(os.path.getmtime(
-            cooldown_file))
+        then = s['cooldown_timestamp']
         delta = now - then
         seconds = delta.total_seconds()
         if seconds < 420:
@@ -38,10 +38,26 @@ def cooldown_expired():
 
 
 def log(message):
-    with open(logfile, 'a') as f:
+    with open(log_file, 'a') as f:
         timestamp = datetime.datetime.now().isoformat()
         f.write('[{0}] - {1}'.format(timestamp, message))
         f.write(os.linesep)
+
+
+@contextlib.contextmanager
+def state():
+    with open(state_file, 'r+w') as f:
+        content = f.read()
+        if not content:
+            # initial state
+            _state = {
+                'cooldown_timestamp': 0,
+                'current_execution_id': None
+            }
+        else:
+            _state = json.load(f)
+        yield state
+        f.write(json.dumps(_state))
 
 
 class NodesHealer(object):
@@ -57,16 +73,20 @@ class NodesHealer(object):
 
     def heal_is_in_progress(self):
 
-        current_execution_id = None
+        with state() as s:
+            current_execution_id = s['current_execution_id']
+
         if current_execution_id is None:
             # no execution running, nothing to do
             return False
         else:
             execution = self.cloudify.executions.get(current_execution_id)
             if execution.status in Execution.END_STATES:
+
                 # the execution ended not long ago,
                 # update cooldown timestamp
-                os.utime(cooldown_file, None)
+                with state() as s:
+                    s['cooldown_timestamp'] = datetime.datetime.now()
                 return False
 
             # execution is still in progress
@@ -103,12 +123,10 @@ class NodeHealer(object):
 
                     healer.log('Attempting to heal')
                     execution_id = healer.heal_async()
+                    with state() as s:
+                        s['current_execution_id'] = execution_id
                     healer.log('Successfully started healing process: {'
                                '0}'.format(execution_id))
-
-                    # update modified timestamp on the cooldown file to
-                    # indicate cooldown starts now
-                    os.utime(cooldown_file, None)
 
                 except CloudifyClientError as e:
                     healer.log('Failed to start healing process: {0}'
@@ -170,15 +188,14 @@ if __name__ == '__main__':
     deployment_id = sys.argv[2]
 
     # configure files
-    logfile = os.path.expanduser('~/{0}-healer.log'.format(deployment_id))
-    cooldown_file = os.path.expanduser('~/{0}-healer.cooldown'.format(
-        deployment_id))
+    log_file = os.path.expanduser('~/{0}-healer.log'.format(deployment_id))
+    state_file = os.path.expanduser('~/{0}-healer.state'.format(deployment_id))
 
     # handle exceptions
     def new_exception_hook(exctype, value, traceback):
         log('Unhandled exception: {0}\n'.format(exctype))
         log('Value: {0}\n'.format(value))
-        traceback.print_tb(traceback, file=logfile)
+        traceback.print_tb(traceback, file=log_file)
         exit(1)
 
     sys.excepthook = new_exception_hook
