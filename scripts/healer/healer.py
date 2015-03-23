@@ -71,8 +71,7 @@ def log(message):
 
 @contextlib.contextmanager
 def state():
-    with open(state_file, 'w+') as f:
-        f.seek(0, 0)
+    with open(state_file, 'r') as f:
         content = f.read()
         if not content:
             # initial state
@@ -83,7 +82,8 @@ def state():
         else:
             _state = json.loads(content)
         yield _state
-        f.write(json.dumps(_state))
+    with open(state_file, 'w') as f:
+        json.dump(_state, f, indent=2)
         f.write(os.linesep)
 
 
@@ -106,9 +106,6 @@ class NodeHealer(object):
             if healer.instance_is_alive():
                 healer.log('Instance is still alive...')
             else:
-                healer.log('Detected node instance failure')
-                healer.log('Attempting to execute heal workflow')
-
                 try:
 
                     healer.log('Attempting to heal')
@@ -143,9 +140,9 @@ class NodeInstanceHealer(object):
                 'now() - 40s'.format(deployment_id, self.node_name,
                                      self.instance_id)
 
-        self.log('Querying InfluxDB : {0}'.format(query))
+        self.log('Querying InfluxDB: {0}'.format(query))
         result = self.influx.query(query)
-        self.log('Query Result : {0}'.format(result))
+        self.log('Query Result: {0}'.format(result))
         return bool(result)
 
     def heal_async(self):
