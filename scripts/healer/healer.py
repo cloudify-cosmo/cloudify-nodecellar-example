@@ -137,7 +137,7 @@ class NodeInstanceHealer(object):
 
         self.log('Querying InfluxDB : {0}'.format(query))
         result = self.influx.query(query)
-        self.log('Query Result : {0}'.format(query))
+        self.log('Query Result : {0}'.format(result))
         return bool(result)
 
     def heal_async(self):
