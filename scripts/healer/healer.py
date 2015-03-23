@@ -47,7 +47,7 @@ def log(message):
 
 @contextlib.contextmanager
 def state():
-    with open(state_file, 'r+w') as f:
+    with open(state_file, 'w+') as f:
         content = f.read()
         if not content:
             # initial state
