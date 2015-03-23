@@ -87,17 +87,6 @@ def state():
         f.write(os.linesep)
 
 
-class NodesHealer(object):
-
-    def __init__(self, node_names):
-        self.node_names = node_names
-
-    def heal(self):
-        for node_name in self.node_names:
-            healer = NodeHealer(node_name)
-            healer.heal()
-
-
 class NodeHealer(object):
 
     def __init__(self, node_name):
@@ -166,8 +155,6 @@ class NodeInstanceHealer(object):
 
 def heal():
 
-    healer = NodesHealer(nodes_to_heal)
-
     # check if there is a healing process already running
     validate_healing()
 
@@ -175,7 +162,10 @@ def heal():
     validate_cooldown()
 
     # now we can try and heal some instances
-    healer.heal()
+    for node_name in nodes_to_heal:
+        healer = NodeHealer(node_name)
+        healer.heal()
+
     exit(0)
 
 if __name__ == '__main__':
