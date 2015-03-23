@@ -48,11 +48,10 @@ def log(message):
 @contextlib.contextmanager
 def state():
     with open(state_file, 'w+') as f:
+        f.seek(0, 0)
         content = f.read()
-        log('opening state file. content is : {0}'.format(content))
         if not content:
             # initial state
-            log('Restoring state')
             _state = {
                 'cooldown_timestamp': 0,
                 'current_execution_id': None
@@ -60,7 +59,6 @@ def state():
         else:
             _state = json.loads(content)
         yield _state
-        log('Updating state with new state: {0}'.format(_state))
         f.write(json.dumps(_state))
         f.write(os.linesep)
 
@@ -177,15 +175,15 @@ def heal():
     healer = NodesHealer(nodes_to_heal)
 
     # check if there is a healing process already running
-    healer.log('Checking in healing is in progress')
+    healer.log('Checking if healing is in progress')
     if healer.heal_is_in_progress():
-        healer.log('Healing in progress...')
+        healer.log('Healing in progress...Not performing actions')
         exit(0)
 
     # check if we are passed the cooldown period
     healer.log('Checking if cooldown period has expired')
     if not cooldown_expired():
-        healer.log('Cooldown in progress...')
+        healer.log('Cooldown in progress...Not performing actions')
         exit(0)
 
     # now we can try and heal some instances
