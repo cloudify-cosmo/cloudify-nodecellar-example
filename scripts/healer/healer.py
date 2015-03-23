@@ -78,11 +78,10 @@ class NodesHealer(object):
 
         with state() as s:
             current_execution_id = s['current_execution_id']
-            self.log('Retrieving current execution id: {0}'
-                     .format(current_execution_id))
 
         if current_execution_id is None:
             # no execution running, nothing to do
+            self.log('No healing process running')
             return False
         else:
             execution = self.cloudify.executions.get(current_execution_id)
@@ -91,6 +90,8 @@ class NodesHealer(object):
             if execution.status in Execution.END_STATES:
                 # the execution ended not long ago,
                 # update cooldown timestamp and current execution id
+                self.log('Healing process has ended. Updating cooldown and '
+                         'execution state.')
                 with state() as s:
                     s['cooldown_timestamp'] = time.time()
                     s['current_execution_id'] = None
@@ -177,13 +178,13 @@ def heal():
     # check if there is a healing process already running
     healer.log('Checking if healing is in progress')
     if healer.heal_is_in_progress():
-        healer.log('Healing in progress...Not performing actions')
+        healer.log('Healing in progress...Not performing any actions')
         exit(0)
 
     # check if we are passed the cooldown period
     healer.log('Checking if cooldown period has expired')
     if not cooldown_expired():
-        healer.log('Cooldown in progress...Not performing actions')
+        healer.log('Cooldown in progress...Not performing any actions')
         exit(0)
 
     # now we can try and heal some instances

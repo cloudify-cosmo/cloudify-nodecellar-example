@@ -14,8 +14,6 @@ LOC=$(ctx download-resource scripts/healer.py)
 
 COMMAND="/home/ubuntu/cloudify.${DPLID}/env/bin/python ${LOC} \"${NTM}\" ${DPLID}"
 
-ctx logger info "Running ${COMMAND}"
-nohup ${COMMAND} > /dev/null 2>&1 &
-
-#echo "*/1 * * * * $COMMAND" >> /home/ubuntu/mycron
-#crontab /home/ubuntu/mycron
+ctx logger info "Adding healer process ot crontab"
+echo "*/1 * * * * $COMMAND" >> /home/ubuntu/healer-cron
+crontab /home/ubuntu/healer-cron
