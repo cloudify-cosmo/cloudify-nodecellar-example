@@ -158,7 +158,7 @@ def heal():
         exit(0)
 
     # now we can try and heal some instances
-    heal().heal()
+    healer.heal()
     exit(0)
 
 if __name__ == '__main__':
