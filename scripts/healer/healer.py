@@ -57,7 +57,7 @@ def state():
             }
         else:
             _state = json.load(f)
-        yield state
+        yield _state
         f.write(json.dumps(_state))
 
 
