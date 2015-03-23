@@ -45,6 +45,9 @@ def validate_healing():
 
     if current_execution_id:
 
+        # execution is still in progress
+        log('Healing is in progress...Not performing any actions')
+
         cloudify = CloudifyClient('localhost')
 
         execution = cloudify.executions.get(current_execution_id)
@@ -57,9 +60,7 @@ def validate_healing():
                 s['cooldown_timestamp'] = time.time()
                 s['current_execution_id'] = None
 
-        # execution is still in progress
-        log('Healing is in progress...Not performing any actions')
-        exit(0)
+    exit(0)
 
 
 def log(message):
