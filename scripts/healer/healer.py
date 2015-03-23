@@ -56,7 +56,7 @@ def state():
                 'current_execution_id': None
             }
         else:
-            _state = json.load(f)
+            _state = json.loads(content)
         yield _state
         f.write(json.dumps(_state))
 
@@ -85,9 +85,10 @@ class NodesHealer(object):
             if execution.status in Execution.END_STATES:
 
                 # the execution ended not long ago,
-                # update cooldown timestamp
+                # update cooldown timestamp and current execution id
                 with state() as s:
                     s['cooldown_timestamp'] = datetime.datetime.now()
+                    s['current_execution_id'] = None
                 return False
 
             # execution is still in progress
@@ -200,7 +201,7 @@ if __name__ == '__main__':
         log('Unhandled exception: {0}\n'.format(exctype))
         log('Value: {0}\n'.format(value))
         traceback.print_tb(tb, file=log_file)
-        exit(1)
+        raise exctype, value, tb
 
     sys.excepthook = new_exception_hook
 
