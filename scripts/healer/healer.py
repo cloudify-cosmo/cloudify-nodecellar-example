@@ -18,6 +18,7 @@ import json
 import datetime
 import os
 import contextlib
+import traceback
 
 from influxdb.influxdb08 import InfluxDBClient
 
@@ -190,12 +191,15 @@ if __name__ == '__main__':
     # configure files
     log_file = os.path.expanduser('~/{0}-healer.log'.format(deployment_id))
     state_file = os.path.expanduser('~/{0}-healer.state'.format(deployment_id))
+    if not os.path.exists(state_file):
+        # create state file if doesn't exist
+        open(state_file, 'w').close()
 
     # handle exceptions
-    def new_exception_hook(exctype, value, traceback):
+    def new_exception_hook(exctype, value, tb):
         log('Unhandled exception: {0}\n'.format(exctype))
         log('Value: {0}\n'.format(value))
-        traceback.print_tb(traceback, file=log_file)
+        traceback.print_tb(tb, file=log_file)
         exit(1)
 
     sys.excepthook = new_exception_hook
