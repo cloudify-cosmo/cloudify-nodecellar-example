@@ -34,6 +34,8 @@ def cooldown_expired():
         then = s['cooldown_timestamp']
         delta = now - then
         if delta < 420:
+            log('Cooldown in progress...Not performing any actions. Time '
+                'left: {0} seconds'.format(420 - delta))
             return False
     return True
 
@@ -85,8 +87,6 @@ class NodesHealer(object):
             return False
         else:
             execution = self.cloudify.executions.get(current_execution_id)
-            self.log('Retrieving current execution status: {0}'.format(
-                execution.status))
             if execution.status in Execution.END_STATES:
                 # the execution ended not long ago,
                 # update cooldown timestamp and current execution id
@@ -98,6 +98,7 @@ class NodesHealer(object):
                 return False
 
             # execution is still in progress
+            self.log('Healing is in progress...Not performing any actions')
             return True
 
     @staticmethod
@@ -176,15 +177,11 @@ def heal():
     healer = NodesHealer(nodes_to_heal)
 
     # check if there is a healing process already running
-    healer.log('Checking if healing is in progress')
     if healer.heal_is_in_progress():
-        healer.log('Healing in progress...Not performing any actions')
         exit(0)
 
     # check if we are passed the cooldown period
-    healer.log('Checking if cooldown period has expired')
     if not cooldown_expired():
-        healer.log('Cooldown in progress...Not performing any actions')
         exit(0)
 
     # now we can try and heal some instances
