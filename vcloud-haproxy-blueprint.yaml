@@ -48,10 +48,12 @@ inputs:
     type: string
 
   server_cpu:
+    default: 2
     description: >
       cpu count for each server
 
   server_memory:
+    default: 4096
     description: >
       memory amount for each server
 
