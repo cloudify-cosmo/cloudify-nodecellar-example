@@ -49,8 +49,10 @@ def log(message):
 def state():
     with open(state_file, 'w+') as f:
         content = f.read()
+        log('opening state file. content is : {0}'.format(content))
         if not content:
             # initial state
+            log('Restoring state')
             _state = {
                 'cooldown_timestamp': 0,
                 'current_execution_id': None
@@ -78,6 +80,8 @@ class NodesHealer(object):
 
         with state() as s:
             current_execution_id = s['current_execution_id']
+            self.log('Retrieving current execution id: {0}'
+                     .format(current_execution_id))
 
         if current_execution_id is None:
             # no execution running, nothing to do
