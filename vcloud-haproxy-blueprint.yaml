@@ -7,8 +7,8 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2-build/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m6/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2-build/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
 
@@ -57,67 +57,10 @@ inputs:
     description: >
       memory amount for each server
 
+  agent_public_key:
+    type: string
+
 node_types:
-
-  ###########################################################
-  # We define a type that inherits vcloud's default
-  # server, and adds monitoring capabillities on top of it.
-  ###########################################################
-
-  nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.vcloud.nodes.Server
-    properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-          home_dir: /home/ubuntu
-      server:
-        default:
-          catalog: { get_input: catalog }
-          template: { get_input: template }
-          hardware:
-            cpu: { get_input: server_cpu }
-            memory: { get_input: server_memory }
-      management_network:
-        default: { get_input: management_network_name }
-    interfaces:
-
-      ###########################################################
-      # We are infact telling cloudify to install a diamond
-      # monitoring agent on the server.
-      #
-      # (see https://github.com/BrightcoveOS/Diamond)
-      ###########################################################
-
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                default:
-                  interval: 1
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-
-      ###########################################################
-      # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-        start:
-          implementation: diamond.diamond_agent.tasks.add_collectors
-          inputs:
-            collectors_config:
-              default:
-                CPUCollector: {}
-                MemoryCollector: {}
-                LoadAverageCollector: {}
-                DiskUsageCollector:
-                  config:
-                    devices: x?vd[a-z]+[0-9]*$
-                NetworkCollector: {}
 
   nodecellar.nodes.Server:
     derived_from: cloudify.vcloud.nodes.Server
@@ -133,6 +76,11 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
+          guest_customization:
+            public_keys:
+              -
+               key:  { get_input: agent_public_key }
+               user: { get_input: agent_user }
       management_network:
         default: { get_input: management_network_name }
 
@@ -140,15 +88,6 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.Server
-    relationships:
-
-      ###########################################################
-      # Attaching the mongo security group to the mongo host
-      ###########################################################
-
-      - target: mongod_security_group
-        type: cloudify.vcloud.server_connected_to_security_group
-
 
   nodejs_host:
     type: nodecellar.nodes.Server
@@ -160,16 +99,6 @@ node_templates:
 
     instances:
       deploy: 2
-    relationships:
-
-      ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
-      ###########################################################
-
-      - target: nodecellar_security_group
-        type: cloudify.vcloud.server_connected_to_security_group
-
 
   haproxy_frontend_host:
     type: nodecellar.nodes.Server
@@ -187,8 +116,8 @@ node_templates:
       # the haproxy frontend host
       ###########################################################
 
-      - type: cloudify.vcloud.server_connected_to_security_group
-        target: haproxy_frontend_security_group
+#      - type: cloudify.vcloud.server_connected_to_security_group
+#        target: haproxy_frontend_security_group
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -210,14 +139,14 @@ node_templates:
       # to collect data on the MongoDB.
       ###########################################################
 
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: localhost:27017
+#      cloudify.interfaces.monitoring:
+#          start:
+#            implementation: diamond.diamond_agent.tasks.add_collectors
+#            inputs:
+#              collectors_config:
+#                MongoDBCollector:
+#                  config:
+#                    hosts: localhost:27017
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -281,7 +210,7 @@ node_templates:
     relationships:
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
-    interfaces:
+#    interfaces:
 
       ###########################################################
       # Notice that this node defines an additional collector
@@ -291,14 +220,14 @@ node_templates:
       # this URL should be updated as well.
       ###########################################################
 
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                HAProxyCollector:
-                  config:
-                    url: http://127.0.0.1:9000/haproxy_stats;csv
+#      cloudify.interfaces.monitoring:
+#          start:
+#            implementation: diamond.diamond_agent.tasks.add_collectors
+#            inputs:
+#              collectors_config:
+#                HAProxyCollector:
+#                  config:
+#                    url: http://127.0.0.1:9000/haproxy_stats;csv
 
 
   ###########################################################
@@ -308,13 +237,13 @@ node_templates:
   # This security group will be attached to the nodejs_host
   ###########################################################
 
-  nodecellar_security_group:
-    type: cloudify.vcloud.nodes.SecurityGroup
-    properties:
-      rules:
-        - protocol: Tcp
-          port: { get_property: [ nodecellar, port ] }
-          description: nodejsPort
+#  nodecellar_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: Tcp
+#          port: { get_property: [ nodecellar, port ] }
+#          description: nodejsPort
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -325,16 +254,16 @@ node_templates:
   # different hosts.
   ###########################################################
 
-  mongod_security_group:
-    type: cloudify.vcloud.nodes.SecurityGroup
-    properties:
-      rules:
-        - protocol: 'Tcp'
-          port: { get_property: [ mongod, port ] }
-          description: mondoPort1
-        - protocol: 'Tcp'
-          port: 28017
-          description: mondoPort2
+#  mongod_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: 'Tcp'
+#          port: { get_property: [ mongod, port ] }
+#          description: mondoPort1
+#        - protocol: 'Tcp'
+#          port: 28017
+#          description: mondoPort2
 
   ###########################################################
   # A security group to enable access to the haproxy frontend
@@ -345,16 +274,19 @@ node_templates:
   # haproxy_frontend_host
   ###########################################################
 
-  haproxy_frontend_security_group:
-    type: cloudify.vcloud.nodes.SecurityGroup
-    properties:
-      rules:
-        - protocol: 'Tcp'
-          port: { get_property: [ haproxy, frontend_port ] }
-          description: frontendPort
-        - protocol: 'Tcp'
-          port: { get_property: [ haproxy, statistics_port ]}
-          description: statisticsPort
+#  haproxy_frontend_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: 'Tcp'
+#          port: { get_property: [ haproxy, frontend_port ] }
+#          description: frontendPort
+#        - protocol: 'Tcp'
+#          port: { get_property: [ haproxy, statistics_port ]}
+#          description: statisticsPort
+#    relationships:
+#       - target: frontend_floatingip
+#         type: cloudify.relationships.depends_on
 
   ###########################################################
   # A floating ip to be tatached to the haproxy frontend host,
