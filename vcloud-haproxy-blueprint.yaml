@@ -47,6 +47,16 @@ inputs:
       The edge gateway ID
     type: string
 
+  server_cpu:
+    default: 2
+    description: >
+      cpu count for each server
+
+  server_memory:
+    default: 4096
+    description: >
+      memory amount for each server
+
 node_types:
 
   ###########################################################
@@ -65,6 +75,9 @@ node_types:
         default:
           catalog: { get_input: catalog }
           template: { get_input: template }
+          hardware:
+            cpu: { get_input: server_cpu }
+            memory: { get_input: server_memory }
       management_network:
         default: { get_input: management_network_name }
     interfaces:
@@ -117,6 +130,9 @@ node_types:
         default:
           catalog: { get_input: catalog }
           template: { get_input: template }
+          hardware:
+            cpu: { get_input: server_cpu }
+            memory: { get_input: server_memory }
       management_network:
         default: { get_input: management_network_name }
 
