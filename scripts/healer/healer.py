@@ -15,10 +15,11 @@
 
 import sys
 import json
-import datetime
 import os
 import contextlib
+import datetime
 import traceback
+import time
 
 from influxdb.influxdb08 import InfluxDBClient
 
@@ -29,11 +30,10 @@ from cloudify_rest_client.exceptions import CloudifyClientError
 
 def cooldown_expired():
     with state() as s:
-        now = datetime.datetime.now()
+        now = time.time()
         then = s['cooldown_timestamp']
         delta = now - then
-        seconds = delta.total_seconds()
-        if seconds < 420:
+        if delta < 420:
             return False
     return True
 
@@ -59,6 +59,7 @@ def state():
             _state = json.loads(content)
         yield _state
         f.write(json.dumps(_state))
+        f.write(os.linesep)
 
 
 class NodesHealer(object):
@@ -87,7 +88,7 @@ class NodesHealer(object):
                 # the execution ended not long ago,
                 # update cooldown timestamp and current execution id
                 with state() as s:
-                    s['cooldown_timestamp'] = datetime.datetime.now()
+                    s['cooldown_timestamp'] = time.time()
                     s['current_execution_id'] = None
                 return False
 
