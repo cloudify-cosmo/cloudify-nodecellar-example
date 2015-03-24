@@ -32,13 +32,13 @@ def validate_cooldown():
         now = time.time()
         then = s['cooldown_timestamp']
         delta = now - then
-        if delta < 420:
+        if delta < 120:
             log('Cooldown in progress...Not performing any actions. Time '
-                'left: {0} seconds'.format(420 - delta))
+                'left: {0} seconds'.format(120 - delta))
             exit(0)
 
 
-def validate_healing():
+def validate_scaling():
 
     with state() as s:
         current_execution_id = s['current_execution_id']
@@ -46,14 +46,14 @@ def validate_healing():
     if current_execution_id:
 
         # execution is still in progress
-        log('Healing is in progress...Not performing any actions')
+        log('Scaling is in progress...Not performing any actions')
 
         cloudify = CloudifyClient('localhost')
         execution = cloudify.executions.get(current_execution_id)
         if execution.status in Execution.END_STATES:
             # the execution ended not long ago,
             # update cooldown timestamp and current execution id
-            log('Healing process has ended. Updating cooldown and '
+            log('Scaling process has ended. Updating cooldown and '
                 'execution state.')
             with state() as s:
                 s['cooldown_timestamp'] = time.time()
@@ -88,86 +88,76 @@ def state():
         f.write(os.linesep)
 
 
-class NodeHealer(object):
+class NodeScaler(object):
 
     def __init__(self, node_name):
         self.node_name = node_name
-        self.cloudify = CloudifyClient('localhost')
-
-    def maybe_heal(self):
-
-        instances = self.cloudify.node_instances.list(
-            deployment_id, self.node_name)
-
-        for instance in instances:
-
-            healer = NodeInstanceHealer(self.node_name, instance.id)
-
-            healer.log('Performing liveness detection')
-            if healer.instance_is_alive():
-                healer.log('Instance is still alive...')
-            else:
-                healer.log('Attempting to heal')
-                execution_id = healer.heal()
-                with state() as s:
-                    s['current_execution_id'] = execution_id
-                healer.log('Successfully started healing process: '
-                           '{0}'.format(execution_id))
-                exit(0)
-
-
-class NodeInstanceHealer(object):
-
-    def __init__(self, node_name, instance_id):
-        self.node_name = node_name
-        self.instance_id = instance_id
         self.cloudify = CloudifyClient('localhost')
         self.influx = InfluxDBClient(host='localhost',
                                      port=8086,
                                      database='cloudify')
 
     def log(self, message):
-        log('<{0}> - {1}'.format(self.instance_id, message))
+        log('<{0}> - {1}'.format(self.node_name, message))
 
-    def instance_is_alive(self):
+    def maybe_scale(self):
 
+        instances = self.cloudify.node_instances.list(
+            deployment_id, self.node_name)
+
+        for instance in instances:
+            value = self._get_instance_reading(instance.id)
+            if value > threshold:
+                self.log('Detected a threshold breach for instance: {'
+                         '0}. [value={1} > threshold={2}]'
+                         .format(instance.id, value, threshold))
+                self.log('Attempting to scale node')
+                execution_id = self.cloudify.executions.start(
+                    deployment_id, 'scale', {
+                        'node_id': self.node_name,
+                        'delta': 1
+                    }).id
+                with state() as s:
+                    s['current_execution_id'] = execution_id
+                self.log('Successfully started scaling process: '
+                         '{0}'.format(execution_id))
+                exit(0)
+
+    def _get_instance_reading(self, instance_id):
         query = 'SELECT MEAN(value) FROM /{0}\.{1}\.{' \
-                '2}\.cpu_total_system/ GROUP BY time(10s) WHERE  time > ' \
+                '2}\.{3}/ GROUP BY time(10s) WHERE  time > ' \
                 'now() - 40s'.format(deployment_id, self.node_name,
-                                     self.instance_id)
-
-        self.log('Querying InfluxDB: {0}'.format(query))
+                                     instance_id, service_name)
         result = self.influx.query(query)
-        self.log('Query Result: {0}'.format(result))
-        return bool(result)
-
-    def heal(self):
-        return self.cloudify.executions.start(
-            deployment_id, 'heal', {'node_id': self.instance_id}).id
+        return result
 
 
-def maybe_heal():
+def scale():
 
-    # check if there is a healing process already running
-    validate_healing()
+    # check if there is a scaling process already running
+    validate_scaling()
 
     # check if we are passed the cooldown period
     validate_cooldown()
 
-    # now we can try and heal some instances
-    for node_name in nodes_to_heal:
-        healer = NodeHealer(node_name)
-        healer.maybe_heal()
+    # now we can try and scale some nodes
+    for node_name in nodes_to_scale:
+        scaler = NodeScaler(node_name)
+        scaler.maybe_scale()
+
+    exit(0)
 
 if __name__ == '__main__':
 
     # parse arguments
-    nodes_to_heal = json.loads(sys.argv[1].replace("'", '"'))
+    nodes_to_scale = json.loads(sys.argv[1].replace("'", '"'))
     deployment_id = sys.argv[2]
+    service_name = sys.argv[3]
+    threshold = int(sys.argv[4])
 
     # configure files
-    log_file = os.path.expanduser('~/{0}-healer.log'.format(deployment_id))
-    state_file = os.path.expanduser('~/{0}-healer.state'.format(deployment_id))
+    log_file = os.path.expanduser('~/{0}-scaler.log'.format(deployment_id))
+    state_file = os.path.expanduser('~/{0}-scaler.state'.format(deployment_id))
     if not os.path.exists(state_file):
         # create state file if doesn't exist
         open(state_file, 'w').close()
@@ -181,5 +171,5 @@ if __name__ == '__main__':
 
     sys.excepthook = new_exception_hook
 
-    # execute heal logic
-    maybe_heal()
+    # execute scale logic
+    scale()

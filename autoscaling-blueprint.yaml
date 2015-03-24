@@ -88,18 +88,25 @@ node_types:
                     devices: x?vd[a-z]+[0-9]*$
                 NetworkCollector: {}
 
-  nodecellar.nodes.Healer:
+  nodecellar.nodes.Scaler:
     derived_from: cloudify.nodes.SoftwareComponent
     properties:
-      nodes_to_heal:
+      nodes_to_scale:
         description: List of node names to perform autohealing on
+        type: string
+      service_name:
+        description: Service name to try and scale by
+        type: string
+      threshold:
+        description: An upper threshold for a reading on a specific instance
+        type: float
     interfaces:
       cloudify.interfaces.lifecycle:
         start:
-          implementation: scripts/healer/start-healer.sh
+          implementation: scripts/healer/start-scaler.sh
           executor: central_deployment_agent
         stop:
-          implementation: scripts/healer/stop-healer.sh
+          implementation: scripts/healer/stop-scaler.sh
           executor: central_deployment_agent
 
 node_templates:
@@ -115,16 +122,18 @@ node_templates:
     properties:
        install_agent: false
 
-  healer:
-    type: nodecellar.nodes.Healer
+  cpu_scaler:
+    type: nodecellar.nodes.Scaler
     relationships:
       - target: mongod_host
         type: cloudify.relationships.depends_on
       - target: manager
         type: cloudify.relationships.contained_in
     properties:
-      nodes_to_heal:
+      nodes_to_scale:
         - mongod_host
+      service_name: cpu_total_system
+      threshold: 0.3
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer

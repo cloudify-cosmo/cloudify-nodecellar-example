@@ -6,14 +6,14 @@ if [ $? -gt 0 ]; then
 fi
 
 
-NTM="$(ctx node properties nodes_to_monitor)"
-NTM=$(echo ${NTM} | sed "s/u'/'/g")
-DPLID=$(ctx deployment id)
+nodes_to_heal=$(ctx node properties nodes_to_heal)
+nodes_to_heal=$(echo ${nodes_to_heal} | sed "s/u'/'/g")
+deployment_id=$(ctx deployment id)
 
-LOC=$(ctx download-resource scripts/healer.py)
+healer_path=$(ctx download-resource scripts/healer.py)
 
-COMMAND="/home/ubuntu/cloudify.${DPLID}/env/bin/python ${LOC} \"${NTM}\" ${DPLID}"
+COMMAND="/home/ubuntu/cloudify.${deployment_id}/env/bin/python ${healer_path} \"${nodes_to_heal}\" ${deployment_id}"
 
-ctx logger info "Adding healer process ot crontab"
-echo "*/1 * * * * $COMMAND" >> "/home/ubuntu/${DPLID}-healer-cron"
-crontab "/home/ubuntu/${DPLID}-healer-cron"
+ctx logger info "Adding healer process to crontab"
+echo "*/1 * * * * $COMMAND" >> "/home/ubuntu/${deployment_id}-healer-cron"
+crontab "/home/ubuntu/${deployment_id}-healer-cron"
