@@ -29,7 +29,7 @@ inputs:
         User name used when SSH-ing into the started machine
 
   agent_private_key_path:
-      default: '~/.ssh/id_rsa'
+      default: '~/.ssh/agent_key.pem'
       description: >
         Path to a private key that resided on the management machine.
         SSH-ing into agent machines will be done with this key.
