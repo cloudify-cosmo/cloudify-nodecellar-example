@@ -111,42 +111,10 @@ node_templates:
       - type: cloudify.vcloud.server_connected_to_floating_ip
         target: frontend_floatingip
 
-      ###########################################################
-      # Attaching the haproxy frontend security group to
-      # the haproxy frontend host
-      ###########################################################
-
-#      - type: cloudify.vcloud.server_connected_to_security_group
-#        target: haproxy_frontend_security_group
-
   mongod:
     type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-
-        ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
-        ###########################################################
-
-        configure: scripts/mongo/install-pymongo.sh
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the MongoDB.
-      ###########################################################
-
-#      cloudify.interfaces.monitoring:
-#          start:
-#            implementation: diamond.diamond_agent.tasks.add_collectors
-#            inputs:
-#              collectors_config:
-#                MongoDBCollector:
-#                  config:
-#                    hosts: localhost:27017
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -210,83 +178,6 @@ node_templates:
     relationships:
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
-#    interfaces:
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the haproxy instance.
-      # Also notice that in the URL, port 9000 is used. If you
-      # choose to change this port on the haproxy node template,
-      # this URL should be updated as well.
-      ###########################################################
-
-#      cloudify.interfaces.monitoring:
-#          start:
-#            implementation: diamond.diamond_agent.tasks.add_collectors
-#            inputs:
-#              collectors_config:
-#                HAProxyCollector:
-#                  config:
-#                    url: http://127.0.0.1:9000/haproxy_stats;csv
-
-
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-#  nodecellar_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: Tcp
-#          port: { get_property: [ nodecellar, port ] }
-#          description: nodejsPort
-
-  ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
-  ###########################################################
-
-#  mongod_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: 'Tcp'
-#          port: { get_property: [ mongod, port ] }
-#          description: mondoPort1
-#        - protocol: 'Tcp'
-#          port: 28017
-#          description: mondoPort2
-
-  ###########################################################
-  # A security group to enable access to the haproxy frontend
-  # host using the haproxy frontend_port property.
-  # In addition, we open the statistics port (9000) of haproxy
-  #
-  # This security group will be attached to the
-  # haproxy_frontend_host
-  ###########################################################
-
-#  haproxy_frontend_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: 'Tcp'
-#          port: { get_property: [ haproxy, frontend_port ] }
-#          description: frontendPort
-#        - protocol: 'Tcp'
-#          port: { get_property: [ haproxy, statistics_port ]}
-#          description: statisticsPort
-#    relationships:
-#       - target: frontend_floatingip
-#         type: cloudify.relationships.depends_on
 
   ###########################################################
   # A floating ip to be tatached to the haproxy frontend host,
