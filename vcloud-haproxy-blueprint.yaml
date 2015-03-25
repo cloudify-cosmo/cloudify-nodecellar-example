@@ -39,8 +39,14 @@ inputs:
 
   management_network_name:
     description: >
-      Name of the network that will be used for Cloudify management
+      Name of the existing network that's being used for Cloudify management
     type: string
+
+  application_network_name:
+    description: >
+      Name for the new network that will be used as application network
+    type: string
+    default: nodecellar-network
 
   edge_gateway:
     description: >
@@ -69,7 +75,7 @@ node_types:
       network:
         default:
           edge_gateway: { get_input: edge_gateway }
-          name: nodecellar-network
+          name: { get_input: application_network_name }
           static_range: 10.0.0.2-10.0.0.128
           netmask: 255.255.255.0
           gateway_ip: 10.0.0.1
@@ -120,6 +126,9 @@ node_templates:
   app_network:
     type: nodecellar.nodes.AppNetwork
     relationships:
+      ###########################################################
+      # Bring internet access for application network
+      ###########################################################
       - target: app_network_internet_access
         type: cloudify.vcloud.net_connected_to_public_nat
 
@@ -127,14 +136,15 @@ node_templates:
     type: cloudify.vcloud.nodes.Port
     properties:
       port:
-        network: nodecellar-network
-#        fails to process
-#        network: { get_attribute: [ app_network, vcloud_network_name ] }
+        network: { get_input: application_network_name }
         ip_allocation_mode: pool
         primary_interface: true
-#    relationships:
-#      - target: app_network
-#        type: cloudify.vcloud.port_connected_to_network
+    relationships:
+      ###########################################################
+      # Connect port to network so network will be created first
+      ###########################################################
+      - target: app_network
+        type: cloudify.vcloud.port_connected_to_network
 
   app_network_internet_access:
     type: cloudify.vcloud.nodes.PublicNAT
@@ -150,7 +160,7 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching the mongo security group to the mongo host
+      # Connecting network interfaces to the mongo host
       ###########################################################
 
       - target: app_network_port
@@ -171,8 +181,7 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
+      # Connecting network interfaces to the nodecellar host
       ###########################################################
 
       - target: app_network_port
@@ -192,12 +201,9 @@ node_templates:
         target: frontend_floatingip
 
       ###########################################################
-      # Attaching the haproxy frontend security group to
-      # the haproxy frontend host
+      # Connecting network interfaces to the haproxy frontend host
       ###########################################################
 
-#      - type: cloudify.vcloud.server_connected_to_security_group
-#        target: haproxy_frontend_security_group
       - target: app_network_port
         type: cloudify.vcloud.server_connected_to_port
       - target: management_network_port
@@ -218,19 +224,6 @@ node_templates:
 
         configure: scripts/mongo/install-pymongo.sh
 
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the MongoDB.
-      ###########################################################
-
-#      cloudify.interfaces.monitoring:
-#          start:
-#            implementation: diamond.diamond_agent.tasks.add_collectors
-#            inputs:
-#              collectors_config:
-#                MongoDBCollector:
-#                  config:
-#                    hosts: localhost:27017
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -294,86 +287,10 @@ node_templates:
     relationships:
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
-#    interfaces:
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the haproxy instance.
-      # Also notice that in the URL, port 9000 is used. If you
-      # choose to change this port on the haproxy node template,
-      # this URL should be updated as well.
-      ###########################################################
-
-#      cloudify.interfaces.monitoring:
-#          start:
-#            implementation: diamond.diamond_agent.tasks.add_collectors
-#            inputs:
-#              collectors_config:
-#                HAProxyCollector:
-#                  config:
-#                    url: http://127.0.0.1:9000/haproxy_stats;csv
 
 
   ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-#  nodecellar_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: Tcp
-#          port: { get_property: [ nodecellar, port ] }
-#          description: nodejsPort
-
-  ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
-  ###########################################################
-
-#  mongod_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: 'Tcp'
-#          port: { get_property: [ mongod, port ] }
-#          description: mondoPort1
-#        - protocol: 'Tcp'
-#          port: 28017
-#          description: mondoPort2
-
-  ###########################################################
-  # A security group to enable access to the haproxy frontend
-  # host using the haproxy frontend_port property.
-  # In addition, we open the statistics port (9000) of haproxy
-  #
-  # This security group will be attached to the
-  # haproxy_frontend_host
-  ###########################################################
-
-#  haproxy_frontend_security_group:
-#    type: cloudify.vcloud.nodes.SecurityGroup
-#    properties:
-#      rules:
-#        - protocol: 'Tcp'
-#          port: { get_property: [ haproxy, frontend_port ] }
-#          description: frontendPort
-#        - protocol: 'Tcp'
-#          port: { get_property: [ haproxy, statistics_port ]}
-#          description: statisticsPort
-#    relationships:
-#       - target: frontend_floatingip
-#         type: cloudify.relationships.depends_on
-
-  ###########################################################
-  # A floating ip to be tatached to the haproxy frontend host,
+  # A floating ip to be attached to the haproxy frontend host,
   # since eventually we want to be able to access the application
   # from any machine, on any network.
   ###########################################################
