@@ -65,7 +65,7 @@ def validate_healing():
 def log(message):
     with open(log_file, 'a') as f:
         timestamp = datetime.datetime.now().isoformat()
-        f.write('[{0}] - {1}'.format(timestamp, message))
+        f.write('[{0}] {1}'.format(timestamp, message))
         f.write(os.linesep)
     print message
 
@@ -131,8 +131,8 @@ class NodeInstanceHealer(object):
 
     def instance_is_alive(self):
 
-        query = 'SELECT MEAN(value) FROM /{0}\.{1}\.{' \
-                '2}\.cpu_total_system/ GROUP BY time(10s) WHERE  time > ' \
+        query = 'select mean(value) from /{0}\.{1}\.{' \
+                '2}\.cpu_total_system/ group by time(10s) where time > ' \
                 'now() - 40s'.format(deployment_id, self.node_name,
                                      self.instance_id)
 

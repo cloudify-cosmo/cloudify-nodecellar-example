@@ -1,14 +1,14 @@
 ###########################################################
 # This Blueprint installs the nodecellar application behind
-# an haproxy instance on an openstack cloud environment.
+# an haproxy instance on an vcloud cloud environment.
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.2m6/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m6/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2-build/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
 
@@ -22,128 +22,75 @@ imports:
 
 inputs:
 
-  image:
+  catalog:
     description: >
-      Image to be used when launching agent VM's
+      The vCloud catalog
+    default: ''
 
-  flavor:
+  template:
     description: >
-      Flavor of the agent VM's
+      The vCloud template
+    default: ''
 
   agent_user:
     description: >
-      User for connecting to agent VM's
+      User name used when SSH-ing into the started machine
+    default: ubuntu
+
+  management_network_name:
+    description: >
+      Name of the network that will be used for Cloudify management
+    type: string
+
+  floating_ip_gateway:
+    description: >
+      The edge gateway ID
+    type: string
+
+  server_cpu:
+    default: 2
+    description: >
+      cpu count for each server
+
+  server_memory:
+    default: 4096
+    description: >
+      memory amount for each server
+
+  agent_public_key:
+    type: string
 
 node_types:
 
-  ###########################################################
-  # We define a type that inherits openstack's default
-  # server, and adds monitoring capabillities on top of it.
-  ###########################################################
-
-  nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.openstack.nodes.Server
+  nodecellar.nodes.Server:
+    derived_from: cloudify.vcloud.nodes.Server
     properties:
       cloudify_agent:
         default:
           user: { get_input: agent_user }
+          home_dir: /home/ubuntu
       server:
         default:
-          image: { get_input: image }
-          flavor: { get_input: flavor }
-    interfaces:
-
-      ###########################################################
-      # We are infact telling cloudify to install a diamond
-      # monitoring agent on the server.
-      #
-      # (see https://github.com/BrightcoveOS/Diamond)
-      ###########################################################
-
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                default:
-                  interval: 15
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-
-      ###########################################################
-      # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-        start:
-          implementation: diamond.diamond_agent.tasks.add_collectors
-          inputs:
-            collectors_config:
-              default:
-                CPUCollector: {}
-                MemoryCollector: {}
-                LoadAverageCollector: {}
-                DiskUsageCollector:
-                  config:
-                    devices: x?vd[a-z]+[0-9]*$
-                NetworkCollector: {}
-
-  nodecellar.nodes.Healer:
-    derived_from: cloudify.nodes.SoftwareComponent
-      properties:
-        nodes_to_heal:
-          description: List of node names to perform autohealing on
-      interfaces:
-        cloudify.interfaces.lifecycle:
-          start:
-            implementation: scripts/start-healer.sh
-            executor: central_deployment_agent
-          stop:
-            implementation: scripts/stop-helaer.sh
-            executor: central_deployment_agent
+          catalog: { get_input: catalog }
+          template: { get_input: template }
+          hardware:
+            cpu: { get_input: server_cpu }
+            memory: { get_input: server_memory }
+          guest_customization:
+            public_keys:
+              -
+               key:  { get_input: agent_public_key }
+               user: { get_input: agent_user }
+      management_network:
+        default: { get_input: management_network_name }
 
 node_templates:
 
-  ###########################################################
-  # This node represents the management machine. We use it
-  # in order to install nodes using the script plugin on the
-  # management machine.
-  ###########################################################
-
-  manager:
-    type: cloudify.nodes.Compute
-    properties:
-       install_agent: false
-
-  healer:
-    type: nodecellar.nodes.Healer
-    relationships:
-      - target: nodejs_host
-        type: cloudify.relationships.depends_on
-      - target: mongod_host
-        type: cloudify.relationships.depends_on
-      - target: manager
-        type: cloudify.relationships.contained_in
-    properties:
-      nodes_to_monitor:
-        - nodejs_host
-        - mongod_host
-
   mongod_host:
-    type: nodecellar.nodes.MonitoredServer
-    relationships:
-
-      ###########################################################
-      # Attaching the mongo security group to the mongo host
-      ###########################################################
-
-      - target: mongod_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+    type: nodecellar.nodes.Server
 
   nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
+    type: nodecellar.nodes.Server
 
     ###########################################################
     # Setting the nodejs_host initial number of instances to 2.
@@ -153,25 +100,15 @@ node_templates:
     instances:
       deploy: 2
 
-    relationships:
-
-      ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
-      ###########################################################
-
-      - target: nodecellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
-
   haproxy_frontend_host:
-    type: nodecellar.nodes.MonitoredServer
+    type: nodecellar.nodes.Server
     relationships:
 
       ###########################################################
       # Attaching a floating ip to the haproxy frontend host
       ###########################################################
 
-      - type: cloudify.openstack.server_connected_to_floating_ip
+      - type: cloudify.vcloud.server_connected_to_floating_ip
         target: frontend_floatingip
 
       ###########################################################
@@ -179,8 +116,8 @@ node_templates:
       # the haproxy frontend host
       ###########################################################
 
-      - type: cloudify.openstack.server_connected_to_security_group
-        target: haproxy_frontend_security_group
+#      - type: cloudify.vcloud.server_connected_to_security_group
+#        target: haproxy_frontend_security_group
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -202,14 +139,14 @@ node_templates:
       # to collect data on the MongoDB.
       ###########################################################
 
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: localhost:27017
+#      cloudify.interfaces.monitoring:
+#          start:
+#            implementation: diamond.diamond_agent.tasks.add_collectors
+#            inputs:
+#              collectors_config:
+#                MongoDBCollector:
+#                  config:
+#                    hosts: localhost:27017
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -273,7 +210,7 @@ node_templates:
     relationships:
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
-    interfaces:
+#    interfaces:
 
       ###########################################################
       # Notice that this node defines an additional collector
@@ -283,14 +220,15 @@ node_templates:
       # this URL should be updated as well.
       ###########################################################
 
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                HAProxyCollector:
-                  config:
-                    url: http://127.0.0.1:9000/haproxy_stats;csv
+#      cloudify.interfaces.monitoring:
+#          start:
+#            implementation: diamond.diamond_agent.tasks.add_collectors
+#            inputs:
+#              collectors_config:
+#                HAProxyCollector:
+#                  config:
+#                    url: http://127.0.0.1:9000/haproxy_stats;csv
+
 
   ###########################################################
   # A security group to enable access to the nodejs host
@@ -299,15 +237,13 @@ node_templates:
   # This security group will be attached to the nodejs_host
   ###########################################################
 
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
+#  nodecellar_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: Tcp
+#          port: { get_property: [ nodecellar, port ] }
+#          description: nodejsPort
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -318,16 +254,16 @@ node_templates:
   # different hosts.
   ###########################################################
 
-  mongod_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: mongod_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 28017
+#  mongod_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: 'Tcp'
+#          port: { get_property: [ mongod, port ] }
+#          description: mondoPort1
+#        - protocol: 'Tcp'
+#          port: 28017
+#          description: mondoPort2
 
   ###########################################################
   # A security group to enable access to the haproxy frontend
@@ -338,26 +274,31 @@ node_templates:
   # haproxy_frontend_host
   ###########################################################
 
-  haproxy_frontend_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: haproxy_frontend_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, frontend_port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, statistics_port ]}
+#  haproxy_frontend_security_group:
+#    type: cloudify.vcloud.nodes.SecurityGroup
+#    properties:
+#      rules:
+#        - protocol: 'Tcp'
+#          port: { get_property: [ haproxy, frontend_port ] }
+#          description: frontendPort
+#        - protocol: 'Tcp'
+#          port: { get_property: [ haproxy, statistics_port ]}
+#          description: statisticsPort
+#    relationships:
+#       - target: frontend_floatingip
+#         type: cloudify.relationships.depends_on
 
   ###########################################################
-  # A floating ip to be attached to the haproxy frontend host,
+  # A floating ip to be tatached to the haproxy frontend host,
   # since eventually we want to be able to access the application
   # from any machine, on any network.
   ###########################################################
 
   frontend_floatingip:
-    type: cloudify.openstack.nodes.FloatingIP
-
+    type: cloudify.vcloud.nodes.FloatingIP
+    properties:
+      floatingip:
+        edge_gateway: { get_input: floating_ip_gateway }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -369,5 +310,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ frontend_floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ frontend_floatingip, public_ip ] }
       port: { get_property: [haproxy, frontend_port] }
