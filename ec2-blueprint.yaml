@@ -3,11 +3,11 @@
 # on an amazon ec2 cloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2m8/types.yaml
-  - http://www.getcloudify.org/spec/libcloud-plugin/1.2m8/plugin.yaml
+  - http://www.getcloudify.org/spec/aws-plugin/1.2m8/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m8/plugin.yaml
   - types/nodecellar.yaml
 
@@ -41,14 +41,11 @@ node_types:
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.libcloud.nodes.Server
+    derived_from: cloudify.aws.nodes.Instance
     properties:
       cloudify_agent:
         default:
           user: { get_input: agent_user }
-      server:
-        description: >
-          Server definitions like image and size.
     interfaces:
 
       ###########################################################
@@ -93,38 +90,22 @@ node_templates:
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      server:
-        image_name: { get_input: image }
-        size_name: { get_input: size }
-
-        ###########################################################
-        # Attaching the mongo security group to the mongo host
-        ###########################################################
-
-        security_groups: ['mongod_security_group']
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
     relationships:
-      - target: mongod_security_group
-        type: cloudify.relationships.connected_to
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: mongod_security_group
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      server:
-        image_name: { get_input: image }
-        size_name: { get_input: size }
-
-        ###########################################################
-        # Attaching the nodecellar security group to
-        # the nodecellar host
-        ###########################################################
-
-        security_groups: ['nodecellar_security_group']
-
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
     relationships:
-      - target: nodecellar_floatingip
-        type: cloudify.libcloud.server_connected_to_floating_ip
-      - target: nodecellar_security_group
-        type: cloudify.relationships.connected_to
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: nodecellar_security_group
+      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
+        target: nodecellar_elasticip
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -192,13 +173,14 @@ node_templates:
   ###########################################################
 
   nodecellar_security_group:
-    type: cloudify.libcloud.nodes.SecurityGroup
+    type: cloudify.aws.nodes.SecurityGroup
     properties:
-      security_group:
-        name: nodecellar_security_group
+      description: Security Group for Nodecellar VMs
       rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
+        - ip_protocol: tcp
+          from_port: { get_property: [ nodecellar, port ] }
+          to_port: { get_property: [ nodecellar, port ] }
+          cidr_ip: 0.0.0.0/0
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -210,15 +192,18 @@ node_templates:
   ###########################################################
 
   mongod_security_group:
-    type: cloudify.libcloud.nodes.SecurityGroup
+    type: cloudify.aws.nodes.SecurityGroup
     properties:
-      security_group:
-        name: mongod_security_group
+      description: Security Group for Mongo VMs
       rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 28017
+        - ip_protocol: tcp
+          from_port: { get_property: [ mongod, port ] }
+          to_port: { get_property: [ mongod, port ] }
+          cidr_ip: 0.0.0.0/0
+        - ip_protocol: tcp
+          from_port: 28017
+          to_port: 28017
+          cidr_ip: 0.0.0.0/0
 
   ###########################################################
   # A floating ip to be attached to the nodejs host, since
@@ -226,8 +211,8 @@ node_templates:
   # from any machine, on any network.
   ###########################################################
 
-  nodecellar_floatingip:
-    type: cloudify.libcloud.nodes.FloatingIP
+  nodecellar_elasticip:
+    type: cloudify.aws.nodes.ElasticIP
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -239,5 +224,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_elasticip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
