@@ -76,6 +76,30 @@ node_types:
           implementation: scripts/healer/stop-healer.sh
           executor: central_deployment_agent
 
+  nodecellar.nodes.NodeJSHostScaler:
+    derived_from: cloudify.nodes.SoftwareComponent
+    properties:
+      nodejs_host_node_name:
+        description: >
+          this is the name of the nodejs host node as it appears
+          in the node_templates section. this node will scaled according to
+          the mongo metrics.
+      mongo_node_name:
+        description: >
+          mongo node name. scaling will be performed by the total
+          connections count made to this node.
+      threshold:
+        description: threshold of total connections to mongod.
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/scaler/start-scaler.sh
+          executor: central_deployment_agent
+        stop:
+          implementation: scripts/scaler/stop-scaler.sh
+          executor: central_deployment_agent
+
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.vcloud.nodes.Server
     properties:
@@ -131,6 +155,28 @@ node_types:
                 default:
                   CPUCollector: {}
 
+  nodecellar.nodes.Server:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      cloudify_agent:
+        default:
+          user: { get_input: agent_user }
+          home_dir: /home/ubuntu
+      server:
+        default:
+          catalog: { get_input: catalog }
+          template: { get_input: template }
+          hardware:
+            cpu: { get_input: server_cpu }
+            memory: { get_input: server_memory }
+          guest_customization:
+            public_keys:
+              -
+               key:  { get_input: agent_public_key }
+               user: { get_input: agent_user }
+      management_network:
+        default: { get_input: management_network_name }
+
 
 node_templates:
 
@@ -155,6 +201,18 @@ node_templates:
     properties:
       nodes_to_heal:
         - nodejs_host
+
+  nodejs_host_scaler:
+    type: nodecellar.nodes.NodeJSHostScaler
+    relationships:
+      - target: mongod
+        type: cloudify.relationships.depends_on
+      - target: manager
+        type: cloudify.relationships.contained_in
+    properties:
+      nodejs_host_node_name: nodejs_host
+      mongo_node_name: mongod
+      threshold: 1000
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
@@ -190,6 +248,30 @@ node_templates:
     type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host

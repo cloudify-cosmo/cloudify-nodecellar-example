@@ -6,16 +6,16 @@ if [ $? -gt 0 ]; then
 fi
 
 
-nodes_to_scale="$(ctx node properties nodes_to_scale)"
-nodes_to_scale=$(echo ${nodes_to_scale} | sed "s/u'/'/g")
+nodejs_host_node_name=$(ctx node properties nodejs_host_node_name)
+mongo_node_name=$(ctx node properties mongo_node_name)
 deployment_id=$(ctx deployment id)
-service_name=$(ctx node properties service_name)
 threshold=$(ctx node properties threshold)
+deployment_id=$(ctx deployment id)
 
-scaler_path=$(ctx download-resource scripts/scaler.py)
+scaler_path=$(ctx download-resource scripts/scaler/scaler.py)
 
-COMMAND="/home/ubuntu/cloudify.${deployment_id}/env/bin/python ${scaler_path} \"${nodes_to_scale}\" ${deployment_id} ${service_name} ${threshold}"
+COMMAND="/home/ubuntu/cloudify.${deployment_id}/env/bin/python ${scaler_path} ${nodejs_host_node_name} ${mongo_node_name} ${deployment_id} ${threshold}"
 
-ctx logger info "Adding scaler process to crontab"
-echo "*/1 * * * * $COMMAND" >> "/home/ubuntu/${deployment_id}-healer-cron"
-crontab "/home/ubuntu/${deployment_id}-scaler-cron"
+ctx logger info "Adding scaler process to crontab with command ${COMMAND}"
+echo "*/1 * * * * ${COMMAND}" >> "/home/ubuntu/${deployment_id}-cron"
+crontab "/home/ubuntu/${deployment_id}-cron"

@@ -65,7 +65,7 @@ def validate_scaling():
 def log(message):
     with open(log_file, 'a') as f:
         timestamp = datetime.datetime.now().isoformat()
-        f.write('[{0}] - {1}'.format(timestamp, message))
+        f.write('[{0}] {1}'.format(timestamp, message))
         f.write(os.linesep)
     print message
 
@@ -88,51 +88,7 @@ def state():
         f.write(os.linesep)
 
 
-class NodeScaler(object):
-
-    def __init__(self, node_name):
-        self.node_name = node_name
-        self.cloudify = CloudifyClient('localhost')
-        self.influx = InfluxDBClient(host='localhost',
-                                     port=8086,
-                                     database='cloudify')
-
-    def log(self, message):
-        log('<{0}> - {1}'.format(self.node_name, message))
-
-    def maybe_scale(self):
-
-        instances = self.cloudify.node_instances.list(
-            deployment_id, self.node_name)
-
-        for instance in instances:
-            value = self._get_instance_reading(instance.id)
-            if value > threshold:
-                self.log('Detected a threshold breach for instance: {'
-                         '0}. [value={1} > threshold={2}]'
-                         .format(instance.id, value, threshold))
-                self.log('Attempting to scale node')
-                execution_id = self.cloudify.executions.start(
-                    deployment_id, 'scale', {
-                        'node_id': self.node_name,
-                        'delta': 1
-                    }).id
-                with state() as s:
-                    s['current_execution_id'] = execution_id
-                self.log('Successfully started scaling process: '
-                         '{0}'.format(execution_id))
-                exit(0)
-
-    def _get_instance_reading(self, instance_id):
-        query = 'SELECT MEAN(value) FROM /{0}\.{1}\.{' \
-                '2}\.{3}/ GROUP BY time(10s) WHERE  time > ' \
-                'now() - 40s'.format(deployment_id, self.node_name,
-                                     instance_id, service_name)
-        result = self.influx.query(query)
-        return result
-
-
-def scale():
+def maybe_scale():
 
     # check if there is a scaling process already running
     validate_scaling()
@@ -140,19 +96,52 @@ def scale():
     # check if we are passed the cooldown period
     validate_cooldown()
 
-    # now we can try and scale some nodes
-    for node_name in nodes_to_scale:
-        scaler = NodeScaler(node_name)
-        scaler.maybe_scale()
+    # now we can try and scale
+
+    cloudify = CloudifyClient('localhost')
+    influx = InfluxDBClient(host='localhost',
+                            port=8086,
+                            database='cloudify')
+
+    instances = cloudify.node_instances.list(
+        deployment_id, mongo_node_name)
+
+    def _get_sum_mongo_connections(instance_id):
+        query = 'select sum(value) from /{0}\.{1}\.{' \
+                '2}\.mongo_connections_totalCreated/' \
+            .format(deployment_id, mongo_node_name,
+                    instance_id)
+        result = influx.query(query)
+        return result[0]['points'][0][1]
+
+    for instance in instances:
+        value = _get_sum_mongo_connections(instance.id)
+        log('Querying total number of connections for '
+            'instance {0} --> {1}'.format(instance.id, value))
+        if value > threshold:
+            log('Detected a threshold breach for mongo instance: {'
+                '0}. [value={1} > threshold={2}]'
+                .format(instance.id, value, threshold))
+            log('Attempting to scale nodejs_host node')
+            execution_id = cloudify.executions.start(
+                deployment_id, 'scale', {
+                    'node_id': nodejs_host_node_name,
+                    'delta': 1
+                }).id
+            with state() as s:
+                s['current_execution_id'] = execution_id
+            log('Successfully started scaling process: '
+                '{0}'.format(execution_id))
+            exit(0)
 
     exit(0)
 
 if __name__ == '__main__':
 
     # parse arguments
-    nodes_to_scale = json.loads(sys.argv[1].replace("'", '"'))
-    deployment_id = sys.argv[2]
-    service_name = sys.argv[3]
+    nodejs_host_node_name = sys.argv[1]
+    mongo_node_name = sys.argv[2]
+    deployment_id = sys.argv[3]
     threshold = int(sys.argv[4])
 
     # configure files
@@ -172,4 +161,4 @@ if __name__ == '__main__':
     sys.excepthook = new_exception_hook
 
     # execute scale logic
-    scale()
+    maybe_scale()
