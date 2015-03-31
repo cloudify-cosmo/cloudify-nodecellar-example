@@ -8,7 +8,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2m6/plugin.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2-build/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
 
@@ -47,6 +47,10 @@ inputs:
       Name for the new network that will be used as application network
     type: string
     default: nodecellar-network
+
+  ip_allocation_mode:
+    type: string
+    default: dhcp
 
   edge_gateway:
     description: >
@@ -128,7 +132,7 @@ node_types:
 
       ###########################################################
       # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
+      # for the Cloudify UI to display the default metrics.
       ###########################################################
 
       cloudify.interfaces.monitoring:
@@ -159,7 +163,7 @@ node_templates:
     properties:
       port:
         network: { get_input: management_network_name }
-        ip_allocation_mode: pool
+        ip_allocation_mode: { get_input: ip_allocation_mode }
         primary_interface: false
 
   app_network:
@@ -176,7 +180,7 @@ node_templates:
     properties:
       port:
         network: { get_input: application_network_name }
-        ip_allocation_mode: pool
+        ip_allocation_mode: { get_input: ip_allocation_mode }
         primary_interface: true
     relationships:
       ###########################################################
