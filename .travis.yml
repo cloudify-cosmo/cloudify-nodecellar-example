@@ -14,7 +14,7 @@ install:
 script:
     - cfy init
     - cfy blueprints validate -p local-blueprint.yaml
-    - cfy blueprints validate -p ec2-blueprint.yaml
+    - cfy blueprints validate -p aws-ec2-blueprint.yaml
     - cfy blueprints validate -p openstack-blueprint.yaml
     - cfy blueprints validate -p openstack-nova-net-blueprint.yaml
     - cfy blueprints validate -p openstack-haproxy-blueprint.yaml
