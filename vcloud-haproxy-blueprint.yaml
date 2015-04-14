@@ -6,8 +6,8 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.2m6/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2rc1/plugin.yaml
   - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
@@ -83,7 +83,7 @@ node_types:
           static_range: 10.0.0.2-10.0.0.128
           netmask: 255.255.255.0
           gateway_ip: 10.0.0.1
-          dns: 10.0.0.1
+          dns: ['10.0.0.1', '8.8.8.8']
           dhcp:
             dhcp_range: 10.0.0.129-10.0.0.254
             default_lease: 3600
