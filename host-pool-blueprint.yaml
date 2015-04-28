@@ -1,0 +1,91 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on hosts from an existing host-pool using the
+# cloudify-host-pool-plugin
+###########################################################
+
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-host-pool-plugin/CFY-2209-add-nodecellar-system-test/plugin.yaml
+  - types/nodecellar.yaml
+
+inputs:
+
+  host_pool_service_endpoint:
+    description: >
+      URL to the host pool service that will allocate hosts.
+
+node_types:
+
+  nodecellar.nodes.Host:
+    derived_from: cloudify.hostpool.nodes.Host
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: hostpool.cloudify_hostpool_plugin.tasks.acquire
+          inputs:
+            service_url:
+              default: { get_input: host_pool_service_endpoint }
+        delete:
+          implementation: hostpool.cloudify_hostpool_plugin.tasks.release
+          inputs:
+            service_url:
+              default: { get_input: host_pool_service_endpoint }
+
+
+node_templates:
+
+  nodejs_host:
+    type: nodecellar.nodes.Host
+
+  mongod_host:
+    type: nodecellar.nodes.Host
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodejs_host, public_address ] }
+      port: { get_property: [nodecellar, port] }

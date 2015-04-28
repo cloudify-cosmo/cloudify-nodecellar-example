@@ -62,12 +62,17 @@ To uninstall the application we run the `uninstall` workflow: <br>
 
 ## All other blueprints
 
+- [EC2 Blueprint](aws-ec2-blueprint.yaml)
 - [Openstack Blueprint](openstack-blueprint.yaml)
 - [Openstack Nova Net Blueprint](openstack-nova-net-blueprint.yaml)
-- [EC2 Blueprint](ec2-blueprint.yaml)
+- [Openstack HAProxy Blueprint](openstack-haproxy-blueprint.yaml)
 - [Singlehost Blueprint](singlehost-blueprint.yaml)
+- [Softlayer Blueprint](softlayer-blueprint.yaml)
 - [CloudStack Blueprint](cloudstack-blueprint.yaml)
 - [CloudStack VPC Blueprint](cloudstack-vpc-blueprint.yaml)
+- [Host Pool Blueprint](host-pool-blueprint.yaml) - To install this
+blueprint, you must have a running [Host Pool Service](https://github.com/cloudify-cosmo/cloudify-host-pool-service) available. More
+information can be found [Here](http://getcloudify.org/guide/3.2/plugin-host-pool.html#host-pool-service)
 
 All of these blueprints allow you to install the nodecellar application on different cloud environments.
 Doing this requires first to bootstrap a Cloudify Manager.<br>

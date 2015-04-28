@@ -22,6 +22,7 @@ script:
     - cfy blueprints validate -p softlayer-blueprint.yaml
     - cfy blueprints validate -p cloudstack-blueprint.yaml
     - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
+    - cfy blueprints validate -p host-pool-blueprint.yaml
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
     - cfy local execute -w uninstall
