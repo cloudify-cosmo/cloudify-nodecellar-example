@@ -8,7 +8,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-host-pool-plugin/CFY-2209-add-nodecellar-system-test/plugin.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.2rc1/plugin.yaml
   - types/nodecellar.yaml
 
 inputs:
