@@ -1,12 +1,15 @@
 # Cloudify Nodecellar Example
 
+![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--aws--ec2-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack--nova--net-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--openstack--haproxy--net-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--softlayer-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--cloudstack-manually--tested-yellow.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--cloudstack--vpc-manually--tested-yellow.svg)
-![alt text](http://img.shields.io/badge/nodecellar--ec2-tested-green.svg)
-![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
-![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--host--pool-tested-green.svg)
 
 This repository contains several blueprints for installing the
 [nodecellar](http://coenraets.org/blog/2012/10/nodecellar-sample-application-with-backbone-js-twitter-bootstrap-node-js-express-and-mongodb/)
