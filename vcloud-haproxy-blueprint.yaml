@@ -195,8 +195,7 @@ node_templates:
       nat:
         edge_gateway: { get_input: edge_gateway }
       rules:
-        type:
-          - SNAT
+        - type: SNAT
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
