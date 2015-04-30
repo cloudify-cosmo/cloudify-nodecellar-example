@@ -1,0 +1,7 @@
+image_id: ''
+image_size: ''
+agent_user: ''
+cloudstack_zone: ''
+cloudstack_app_network_service_offering: ''
+cloudstack_management_network_service_offering: ''
+management_network_resource_id: ''

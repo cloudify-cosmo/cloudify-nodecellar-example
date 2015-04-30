@@ -1,21 +1,47 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on a local machine.
+# on hosts from an existing host-pool using the
+# cloudify-host-pool-plugin
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_0
 
-imports:  
+imports:
   - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.2rc1/plugin.yaml
   - types/nodecellar.yaml
+
+inputs:
+
+  host_pool_service_endpoint:
+    description: >
+      URL to the host pool service that will allocate hosts.
+
+node_types:
+
+  nodecellar.nodes.Host:
+    derived_from: cloudify.hostpool.nodes.Host
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: hostpool.cloudify_hostpool_plugin.tasks.acquire
+          inputs:
+            service_url:
+              default: { get_input: host_pool_service_endpoint }
+        delete:
+          implementation: hostpool.cloudify_hostpool_plugin.tasks.release
+          inputs:
+            service_url:
+              default: { get_input: host_pool_service_endpoint }
+
 
 node_templates:
 
-  host:
-    type: cloudify.nodes.Compute
-    properties:
-      ip: localhost
-      install_agent: false
+  nodejs_host:
+    type: nodecellar.nodes.Host
+
+  mongod_host:
+    type: nodecellar.nodes.Host
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -23,13 +49,13 @@ node_templates:
       port: 27017
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: mongod_host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
@@ -61,5 +87,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: localhost
+      ip_address: { get_attribute: [ nodejs_host, public_address ] }
       port: { get_property: [nodecellar, port] }

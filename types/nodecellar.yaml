@@ -11,7 +11,7 @@ node_types:
   ###########################################################
   # Mongo Database.
   #
-  # Used a the data backend for the nodecellar application.
+  # Used the data backend for the nodecellar application.
   # configurable properties:
   #   - port
   ###########################################################

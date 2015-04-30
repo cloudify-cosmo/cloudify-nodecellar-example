@@ -1,14 +1,14 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on an amazon ec2 cloud environment.
+# on a softlayer cloud environment.
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
-  - http://www.getcloudify.org/spec/libcloud-plugin/1.1/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.1/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
+  - http://www.getcloudify.org/spec/softlayer-plugin/1.2rc1/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2rc1/plugin.yaml
   - types/nodecellar.yaml
 
 #####################################################################################
@@ -20,35 +20,58 @@ imports:
 #####################################################################################
 
 inputs:
-
-  image:
+  location: 
     description: >
-      Image to be used when launching agent VM's
-
-  size:
+      Location of the data center
+      Default value is the location id of Hong kong 2
+    default: 352494
+  domain: 
+    description: The domain
+    default: cloudify.org
+  ram: 
     description: >
-      Flavor of the agent VM's
-
-  agent_user:
+      Item id of the ram
+      Default value is the item id of 16 GB
+    default: 1017
+  cpu: 
     description: >
-      User for connecting to agent VM's
+      Item id of the cpu
+      Default value is the item id of 4 x 2.0 GHz Cores
+    default: 859
+  disk: 
+    description: >
+      Item id of the disk
+      Default value is the item id of 25 GB (SAN)
+    default: 1178
+  os: 
+    description: >
+      Item id of the operating system
+      Default value is the item id of Ubuntu Linux 12.04 
+    default: 4174
 
 node_types:
 
   ###########################################################
-  # We define a type that inherits ec2's default
+  # We define a type that inherits softlayer's default
   # server, and adds monitoring capabillities on top of it.
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.libcloud.nodes.Server
+    derived_from: cloudify.softlayer.nodes.VirtualServer
     properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-      server:
-        description: >
-          Server definitions like image and size.
+      location: 
+        default: { get_input: location }
+      domain: 
+        default: { get_input: domain }
+      ram:
+        default: { get_input: ram }
+      cpu: 
+        default: { get_input: cpu }
+      disk: 
+        default: { get_input: disk }
+      os: 
+        default: { get_input: os }
+
     interfaces:
 
       ###########################################################
@@ -93,38 +116,12 @@ node_templates:
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      server:
-        image_name: { get_input: image }
-        size_name: { get_input: size }
-
-        ###########################################################
-        # Attaching the mongo security group to the mongo host
-        ###########################################################
-
-        security_groups: ['mongod_security_group']
-    relationships:
-      - target: mongod_security_group
-        type: cloudify.relationships.connected_to
+      hostname: mongod-host
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      server:
-        image_name: { get_input: image }
-        size_name: { get_input: size }
-
-        ###########################################################
-        # Attaching the nodecellar security group to
-        # the nodecellar host
-        ###########################################################
-
-        security_groups: ['nodecellar_security_group']
-
-    relationships:
-      - target: nodecellar_floatingip
-        type: cloudify.libcloud.server_connected_to_floating_ip
-      - target: nodecellar_security_group
-        type: cloudify.relationships.connected_to
+      hostname: nodejs-host
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -184,50 +181,6 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.libcloud.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
-  ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
-  ###########################################################
-
-  mongod_security_group:
-    type: cloudify.libcloud.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: mongod_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 28017
-
-  ###########################################################
-  # A floating ip to be attached to the nodejs host, since
-  # eventually we want to be able to access it
-  # from any machine, on any network.
-  ###########################################################
-
-  nodecellar_floatingip:
-    type: cloudify.libcloud.nodes.FloatingIP
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -239,5 +192,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
-      port: { get_property: [ nodecellar, port ] }
+      ip_address: { get_attribute: [nodejs_host, public_ip] }
+      port: { get_property: [nodecellar, port] }

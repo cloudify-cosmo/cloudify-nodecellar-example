@@ -1,14 +1,13 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on an openstack cloud environment with nova network
-# (as opposed to neutron network
+# on an amazon ec2 cloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.2rc1/plugin.yaml
+  - http://www.getcloudify.org/spec/aws-plugin/1.2rc1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2rc1/plugin.yaml
   - types/nodecellar.yaml
 
@@ -26,7 +25,7 @@ inputs:
     description: >
       Image to be used when launching agent VM's
 
-  flavor:
+  size:
     description: >
       Flavor of the agent VM's
 
@@ -37,20 +36,16 @@ inputs:
 node_types:
 
   ###########################################################
-  # We define a type that inherits openstack's default
+  # We define a type that inherits ec2's default
   # server, and adds monitoring capabillities on top of it.
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.openstack.nodes.Server
+    derived_from: cloudify.aws.nodes.Instance
     properties:
       cloudify_agent:
         default:
           user: { get_input: agent_user }
-      server:
-        default:
-          image: { get_input: image }
-          flavor: { get_input: flavor }
     interfaces:
 
       ###########################################################
@@ -94,33 +89,23 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
     relationships:
-
-      ###########################################################
-      # Attaching the mongo security group to the mongo host
-      ###########################################################
-
-      - target: mongod_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: mongod_security_group
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
     relationships:
-
-      ###########################################################
-      # Attaching a floating ip to the nodejs host
-      ###########################################################
-
-      - target: nodecellar_floatingip
-        type: cloudify.openstack.server_connected_to_floating_ip
-
-      ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
-      ###########################################################
-
-      - target: nodecellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: nodecellar_security_group
+      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
+        target: nodecellar_elasticip
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -188,13 +173,14 @@ node_templates:
   ###########################################################
 
   nodecellar_security_group:
-    type: cloudify.openstack.nova_net.nodes.SecurityGroup
+    type: cloudify.aws.nodes.SecurityGroup
     properties:
-      resource_id: nodecellar_security_group
-      description: Nodecellar security group
+      description: Security Group for Nodecellar VMs
       rules:
-        - cidr: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
+        - ip_protocol: tcp
+          from_port: { get_property: [ nodecellar, port ] }
+          to_port: { get_property: [ nodecellar, port ] }
+          cidr_ip: 0.0.0.0/0
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -206,15 +192,18 @@ node_templates:
   ###########################################################
 
   mongod_security_group:
-    type: cloudify.openstack.nova_net.nodes.SecurityGroup
+    type: cloudify.aws.nodes.SecurityGroup
     properties:
-      resource_id: mongod_security_group
-      description: MongoDB security group
+      description: Security Group for Mongo VMs
       rules:
-        - cidr: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - cidr: 0.0.0.0/0
-          port: 28017
+        - ip_protocol: tcp
+          from_port: { get_property: [ mongod, port ] }
+          to_port: { get_property: [ mongod, port ] }
+          cidr_ip: 0.0.0.0/0
+        - ip_protocol: tcp
+          from_port: 28017
+          to_port: 28017
+          cidr_ip: 0.0.0.0/0
 
   ###########################################################
   # A floating ip to be attached to the nodejs host, since
@@ -222,8 +211,8 @@ node_templates:
   # from any machine, on any network.
   ###########################################################
 
-  nodecellar_floatingip:
-    type: cloudify.openstack.nova_net.nodes.FloatingIP
+  nodecellar_elasticip:
+    type: cloudify.aws.nodes.ElasticIP
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -235,5 +224,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_elasticip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }

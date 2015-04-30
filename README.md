@@ -1,12 +1,15 @@
 # Cloudify Nodecellar Example
 
+![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--aws--ec2-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack--nova--net-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--openstack--haproxy--net-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
+![alt text](http://img.shields.io/badge/nodecellar--softlayer-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--cloudstack-manually--tested-yellow.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--cloudstack--vpc-manually--tested-yellow.svg)
-![alt text](http://img.shields.io/badge/nodecellar--ec2-tested-green.svg)
-![alt text](http://img.shields.io/badge/nodecellar--singlehost-manually--tested-yellow.svg)
-![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
+![alt text](http://img.shields.io/badge/nodecellar--host--pool-tested-green.svg)
 
 This repository contains several blueprints for installing the
 [nodecellar](http://coenraets.org/blog/2012/10/nodecellar-sample-application-with-backbone-js-twitter-bootstrap-node-js-express-and-mongodb/)
@@ -62,12 +65,17 @@ To uninstall the application we run the `uninstall` workflow: <br>
 
 ## All other blueprints
 
+- [EC2 Blueprint](aws-ec2-blueprint.yaml)
 - [Openstack Blueprint](openstack-blueprint.yaml)
 - [Openstack Nova Net Blueprint](openstack-nova-net-blueprint.yaml)
-- [EC2 Blueprint](ec2-blueprint.yaml)
+- [Openstack HAProxy Blueprint](openstack-haproxy-blueprint.yaml)
 - [Singlehost Blueprint](singlehost-blueprint.yaml)
+- [Softlayer Blueprint](softlayer-blueprint.yaml)
 - [CloudStack Blueprint](cloudstack-blueprint.yaml)
 - [CloudStack VPC Blueprint](cloudstack-vpc-blueprint.yaml)
+- [Host Pool Blueprint](host-pool-blueprint.yaml) - To install this
+blueprint, you must have a running [Host Pool Service](https://github.com/cloudify-cosmo/cloudify-host-pool-service) available. More
+information can be found [Here](http://getcloudify.org/guide/3.2/plugin-host-pool.html#host-pool-service)
 
 All of these blueprints allow you to install the nodecellar application on different cloud environments.
 Doing this requires first to bootstrap a Cloudify Manager.<br>
