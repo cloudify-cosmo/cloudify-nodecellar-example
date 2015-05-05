@@ -11,7 +11,7 @@ node_types:
   ###########################################################
   # Mongo Database.
   #
-  # Used a the data backend for the nodecellar application.
+  # Used the data backend for the nodecellar application.
   # configurable properties:
   #   - port
   ###########################################################
@@ -28,6 +28,12 @@ node_types:
         start: scripts/mongo/start-mongo.sh
         stop: scripts/mongo/stop-mongo.sh
 
+  nodecellar.nodes.NginxProxy:
+    derived_from: cloudify.nodes.ApplicationServer
+    properties:
+      port:
+        description: The port nginx will listen on.
+        type: integer
 
   ###########################################################
   # NodeJS Server.
@@ -115,3 +121,9 @@ relationships:
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
         preconfigure: scripts/nodejs/set-nodejs-root.sh
+
+  node_connected_to_nodecellar:
+    derived_from: cloudify.relationships.connected_to
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+        postconfigure: scripts/nginx/configure-reload-nginx.sh
