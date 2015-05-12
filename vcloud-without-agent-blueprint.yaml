@@ -1,0 +1,139 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+  - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
+  - types/nodecellar.yaml
+
+inputs:
+
+  catalog:
+    type: string
+
+  template:
+    type: string
+
+  server_cpu:
+    default: 2
+    description: >
+      cpu count for each server
+
+  server_memory:
+    default: 4096
+    description: >
+      memory amount for each server
+
+  agent_public_key:
+    type: string
+
+  agent_user:
+    description: >
+      User for connecting to agent VM's
+    type: string
+    default: ubuntu
+
+  edge_gateway:
+    type: string
+    default: gateway
+    description: >
+      For 'ondemand' service type, the value of edge_gateway
+      is always 'gateway'
+
+node_types:
+
+  nodecellar.nodes.ParentTypeServer:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      cloudify_agent:
+        default:
+          user: { get_input: agent_user }
+          home_dir: /home/ubuntu
+      server:
+        default:
+          catalog: { get_input: catalog }
+          template: { get_input: template }
+          hardware:
+            cpu: { get_input: server_cpu }
+            memory: { get_input: server_memory }
+          guest_customization:
+            public_keys:
+              -
+               key:  { get_input: agent_public_key }
+               user: { get_input: agent_user }
+
+node_templates:
+  nodejs_nat:
+    type: cloudify.vcloud.nodes.PublicNAT
+    properties:
+      nat:
+        edge_gateway: { get_input: edge_gateway }
+      rules:
+       - type: DNAT
+         protocol: tcp
+         original_port: 8080
+         translated_port: 8080
+       - type: DNAT
+         protocol: tcp
+         original_port: 22
+         translated_port: 22
+
+  nodejs_host:
+    type: nodecellar.nodes.ParentTypeServer
+    properties:
+      install_agent: false
+    relationships:
+      - target: nodejs_nat
+        type: cloudify.vcloud.server_connected_to_public_nat
+
+  mongod_host:
+    type: nodecellar.nodes.ParentTypeServer
+    properties:
+      install_agent: false
+
+  nodejs:
+    type: cloudify.nodes.WebServer
+    relationships:
+        - target: nodejs_host
+          type: cloudify.relationships.contained_in
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file: scripts/withoutagent/install_node_js.py
+            task_name: install
+            task_properties:
+                config:
+                    mongo: { get_attribute: [mongod_host, ip] }
+
+  mongod:
+    type: cloudify.nodes.WebServer
+    relationships:
+        - target: mongod_host
+          type: cloudify.relationships.contained_in
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file: scripts/withoutagent/install_mongo.py
+            task_name: install
+            task_properties:
+                config: {}
+
+  nodecellar:
+    type: cloudify.nodes.ApplicationModule
+    relationships:
+
+      - type: cloudify.relationships.connected_to
+        target: mongod
+
+      - type: cloudify.relationships.connected_to
+        target: nodejs
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      public_ip: { get_attribute: [ nodejs_nat, public_ip ] }
