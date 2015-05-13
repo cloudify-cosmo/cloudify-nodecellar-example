@@ -6,6 +6,18 @@ def _run(command):
     out = fabric.api.run(command)
     ctx.logger.info(out)
 
+def install_mongo(config):
+    ctx.logger.info("Config: " + str(config))
+    _run('sudo sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10 2>&1')
+    _run('echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list 2>&1')
+    _run('sudo apt-get update 2>&1')
+    _run('sudo apt-get install -y mongodb-org 2>&1')
+    # enable access from any ip
+    # by default access blocked to localhost
+    _run('sudo sed "s/bind_ip = /#bind_ip = /g" -i /etc/mongod.conf')
+    _run('sudo initctl stop mongod')
+    _run('sudo initctl start mongod')
+
 def _generate_service(mongodb_host):
     return [
         "description 'nodecellar service'",
@@ -25,7 +37,7 @@ def _generate_service(mongodb_host):
         "end script"
     ]
 
-def install(config):
+def install_node_js(config):
     ctx.logger.info("Config: " + str(config))
     _run("sudo apt-get install python-software-properties -q -y 2>&1")
     _run("sudo apt-add-repository ppa:chris-lea/node.js -y 2>&1")
@@ -44,5 +56,3 @@ def install(config):
     _run("sudo chown root:root /etc/init/nodecellar.conf")
     # run service
     _run('sudo initctl start nodecellar')
-
-
