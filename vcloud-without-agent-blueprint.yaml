@@ -24,10 +24,10 @@ inputs:
     description: >
       memory amount for each server
 
-  agent_public_key:
+  user_public_key:
     type: string
 
-  agent_user:
+  user:
     description: >
       User for connecting to agent VM's
     type: string
@@ -47,7 +47,7 @@ node_types:
     properties:
       cloudify_agent:
         default:
-          user: { get_input: agent_user }
+          user: { get_input: user }
           home_dir: /home/ubuntu
       server:
         default:
@@ -59,8 +59,8 @@ node_types:
           guest_customization:
             public_keys:
               -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
+               key:  { get_input: user_public_key }
+               user: { get_input: user }
 
 node_templates:
   nodejs_nat:
@@ -101,8 +101,8 @@ node_templates:
         start:
           implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            tasks_file: scripts/withoutagent/install_node_js.py
-            task_name: install
+            tasks_file: scripts/withoutagent/install.py
+            task_name: install_node_js
             task_properties:
                 config:
                     mongo: { get_attribute: [mongod_host, ip] }
@@ -117,8 +117,8 @@ node_templates:
         start:
           implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            tasks_file: scripts/withoutagent/install_mongo.py
-            task_name: install
+            tasks_file: scripts/withoutagent/install.py
+            task_name: install_mongo
             task_properties:
                 config: {}
 
