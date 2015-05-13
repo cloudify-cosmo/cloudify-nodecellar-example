@@ -8,15 +8,23 @@ def _run(command):
 
 def install_mongo(config):
     ctx.logger.info("Config: " + str(config))
-    _run('sudo sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10 2>&1')
-    _run('echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list 2>&1')
-    _run('sudo apt-get update 2>&1')
-    _run('sudo apt-get install -y mongodb-org 2>&1')
+    script = []
+    script.append(
+        'sudo sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10 2>&1'
+    )
+    script.append(
+        'echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list 2>&1'
+    )
+    script.append('sudo apt-get update 2>&1')
+    script.append('sudo apt-get install -y mongodb-org 2>&1')
     # enable access from any ip
     # by default access blocked to localhost
-    _run('sudo sed "s/bind_ip = /#bind_ip = /g" -i /etc/mongod.conf')
-    _run('sudo initctl stop mongod')
-    _run('sudo initctl start mongod')
+    script.append(
+        'sudo sed "s/bind_ip = /#bind_ip = /g" -i /etc/mongod.conf'
+    )
+    script.append('sudo initctl stop mongod')
+    script.append('sudo initctl start mongod')
+    _run("\n".join(script))
 
 def _generate_service(mongodb_host):
     return [
@@ -39,20 +47,22 @@ def _generate_service(mongodb_host):
 
 def install_node_js(config):
     ctx.logger.info("Config: " + str(config))
-    _run("sudo apt-get install python-software-properties -q -y 2>&1")
-    _run("sudo apt-add-repository ppa:chris-lea/node.js -y 2>&1")
-    _run("sudo apt-get update 2>&1")
-    _run("sudo apt-get install nodejs make g++ wget -q -y 2>&1")
-    _run("wget https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz 2>&1")
-    _run("tar -xvf master.tar.gz")
-    _run("cd nodecellar-master && npm update")
+    script = []
+    script.append("sudo apt-get install python-software-properties -q -y 2>&1")
+    script.append("sudo apt-add-repository ppa:chris-lea/node.js -y 2>&1")
+    script.append("sudo apt-get update 2>&1")
+    script.append("sudo apt-get install nodejs make g++ wget -q -y 2>&1")
+    script.append("wget https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz 2>&1")
+    script.append("tar -xvf master.tar.gz")
+    script.append("cd nodecellar-master && npm update")
     # create service config
     service = _generate_service(config.get("mongo", "localhost"))
-    _run("rm -f /home/ubuntu/nodecellar.conf")
+    script.append("rm -f /home/ubuntu/nodecellar.conf")
     for service_str in service:
-        _run('echo "' + service_str + '" >> /home/ubuntu/nodecellar.conf')
+        script.append('echo "' + service_str + '" >> /home/ubuntu/nodecellar.conf')
     # create init file
-    _run("sudo cp /home/ubuntu/nodecellar.conf /etc/init/nodecellar.conf")
-    _run("sudo chown root:root /etc/init/nodecellar.conf")
+    script.append("sudo cp /home/ubuntu/nodecellar.conf /etc/init/nodecellar.conf")
+    script.append("sudo chown root:root /etc/init/nodecellar.conf")
     # run service
-    _run('sudo initctl start nodecellar')
+    script.append('sudo initctl start nodecellar')
+    _run("\n".join(script))
