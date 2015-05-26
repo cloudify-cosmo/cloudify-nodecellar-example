@@ -4,7 +4,6 @@ imports:
   - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
   - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
   - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
-  - types/nodecellar.yaml
 
 inputs:
 
@@ -101,8 +100,8 @@ node_templates:
         start:
           implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            tasks_file: scripts/withoutagent/install.py
-            task_name: install_node_js
+            tasks_file: scripts/withoutagent/install_nodejs.py
+            task_name: install
             task_properties:
                 config:
                     mongo: { get_attribute: [mongod_host, ip] }
@@ -117,8 +116,8 @@ node_templates:
         start:
           implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            tasks_file: scripts/withoutagent/install.py
-            task_name: install_mongo
+            tasks_file: scripts/withoutagent/install_mongo.py
+            task_name: install
             task_properties:
                 config: {}
 
