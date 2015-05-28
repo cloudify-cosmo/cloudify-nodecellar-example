@@ -40,28 +40,6 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
-node_types:
-
-  nodecellar.nodes.ParentTypeServer:
-    derived_from: cloudify.vcloud.nodes.Server
-    properties:
-      cloudify_agent:
-        default:
-          user: { get_input: user }
-          home_dir: /home/ubuntu
-      server:
-        default:
-          catalog: { get_input: catalog }
-          template: { get_input: template }
-          hardware:
-            cpu: { get_input: server_cpu }
-            memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: user_public_key }
-               user: { get_input: user }
-
 node_templates:
   nodejs_nat:
     type: cloudify.vcloud.nodes.PublicNAT
@@ -79,17 +57,37 @@ node_templates:
          translated_port: 22
 
   nodejs_host:
-    type: nodecellar.nodes.ParentTypeServer
-    properties:
-      install_agent: false
+    type: agentless-nodecellar.nodes.ParentTypeServer
     relationships:
       - target: nodejs_nat
         type: cloudify.vcloud.server_connected_to_public_nat
+    properties:
+      server:
+        catalog: { get_input: catalog }
+        template: { get_input: template }
+        hardware:
+          cpu: { get_input: server_cpu }
+          memory: { get_input: server_memory }
+        guest_customization:
+          public_keys:
+            -
+             key:  { get_input: user_public_key }
+             user: { get_input: user }
 
   mongod_host:
-    type: nodecellar.nodes.ParentTypeServer
+    type: agentless-nodecellar.nodes.ParentTypeServer
     properties:
-      install_agent: false
+      server:
+        catalog: { get_input: catalog }
+        template: { get_input: template }
+        hardware:
+          cpu: { get_input: server_cpu }
+          memory: { get_input: server_memory }
+        guest_customization:
+          public_keys:
+            -
+             key:  { get_input: user_public_key }
+             user: { get_input: user }
 
   nodejs:
     type: agentless-nodecellar.nodes.NodeJSServer

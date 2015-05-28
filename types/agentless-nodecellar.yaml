@@ -1,5 +1,17 @@
 node_types:
 
+  # base server type for installation without agent
+  agentless-nodecellar.nodes.ParentTypeServer:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      install_agent:
+        default: false
+      cloudify_agent:
+        default:
+          user: ubuntu
+          home_dir: /home/ubuntu
+
+  # template for nodejs node
   agentless-nodecellar.nodes.NodeJSServer:
     derived_from: cloudify.nodes.WebServer
     interfaces:
@@ -15,6 +27,7 @@ node_types:
               default:
                config: {}
 
+  # template for mongo node
   agentless-nodecellar.nodes.MongoDatabase:
     derived_from: cloudify.nodes.DBMS
     interfaces:
