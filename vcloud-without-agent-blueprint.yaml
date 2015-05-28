@@ -92,7 +92,7 @@ node_templates:
       install_agent: false
 
   nodejs:
-    type: agentless-nodejs
+    type: agentless-nodecellar.nodes.NodeJSServer
     relationships:
         - target: nodejs_host
           type: cloudify.relationships.contained_in
@@ -105,7 +105,7 @@ node_templates:
                     mongo: { get_attribute: [mongod_host, ip] }
 
   mongod:
-    type: agentless-mongod
+    type: agentless-nodecellar.nodes.MongoDatabase
     relationships:
         - target: mongod_host
           type: cloudify.relationships.contained_in
