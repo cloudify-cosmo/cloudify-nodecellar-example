@@ -1,6 +1,6 @@
 node_types:
 
-  agentless-nodejs:
+  agentless-nodecellar.nodes.NodeJSServer:
     derived_from: cloudify.nodes.WebServer
     interfaces:
       cloudify.interfaces.lifecycle:
@@ -15,7 +15,7 @@ node_types:
               default:
                config: {}
 
-  agentless-mongod:
+  agentless-nodecellar.nodes.MongoDatabase:
     derived_from: cloudify.nodes.DBMS
     interfaces:
       cloudify.interfaces.lifecycle:
