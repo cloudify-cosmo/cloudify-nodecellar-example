@@ -1,0 +1,31 @@
+node_types:
+
+  agentless-nodejs:
+    derived_from: cloudify.nodes.WebServer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_nodejs.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
+
+  agentless-mongod:
+    derived_from: cloudify.nodes.DBMS
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_mongo.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
