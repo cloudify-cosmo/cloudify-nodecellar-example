@@ -40,7 +40,21 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
+node_types:
+
+  # base server type for installation without agent
+  agentless-nodecellar.nodes.ParentTypeServer:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      install_agent:
+        default: false
+      cloudify_agent:
+        default:
+          user: ubuntu
+          home_dir: /home/ubuntu
+
 node_templates:
+
   nodejs_nat:
     type: cloudify.vcloud.nodes.PublicNAT
     properties:
