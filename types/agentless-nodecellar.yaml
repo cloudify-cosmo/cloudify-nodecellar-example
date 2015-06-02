@@ -31,3 +31,19 @@ node_types:
             task_properties:
               default:
                config: {}
+
+  #template for nodejs application nodecellar
+  agentless-nodecellar.nodes.nodecellar:
+    derived_from: cloudify.nodes.ApplicationModule
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_nodecellar.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
