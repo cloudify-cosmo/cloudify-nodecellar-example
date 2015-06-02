@@ -116,23 +116,17 @@ node_templates:
           type: cloudify.relationships.contained_in
 
   nodecellar:
-    type: cloudify.nodes.ApplicationModule
+    type: agentless-nodecellar.nodes.nodecellar
     interfaces:
       cloudify.interfaces.lifecycle:
         start:
-          implementation: fabric.fabric_plugin.tasks.run_task
           inputs:
-            tasks_file: scripts/withoutagent/install_nodecellar.py
-            task_name: install
             task_properties:
               config:
                 mongo: { get_attribute: [mongod_host, ip] }
-
     relationships:
-
       - type: cloudify.relationships.connected_to
         target: mongod
-
       - type: cloudify.relationships.contained_in
         target: nodejs
 
