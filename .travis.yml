@@ -10,6 +10,7 @@ install:
     - pip install https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.2.zip
     - pip install https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.2.zip
     - pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/3.2.zip
+    - pip install https://github.com/cloudify-cosmo/tosca-vcloud-plugin/archive/1.2.zip
 
 script:
     - cfy init
@@ -23,6 +24,9 @@ script:
     - cfy blueprints validate -p cloudstack-blueprint.yaml
     - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
     - cfy blueprints validate -p host-pool-blueprint.yaml
+    - cfy blueprints validate -p vcloud-without-agent-blueprint.yaml
+    - cfy blueprints validate -p vcloud-haproxy-blueprint.yaml
+    - cfy blueprints validate -p  vcloud-blueprint.yaml
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
     - cfy local execute -w uninstall

@@ -1,0 +1,212 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+  - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
+  - types/agentless-nodecellar.yaml
+
+inputs:
+
+  catalog:
+    type: string
+
+  template:
+    type: string
+
+  server_cpu:
+    default: 2
+    description: >
+      cpu count for each server
+
+  server_memory:
+    default: 4096
+    description: >
+      memory amount for each server
+
+  user_public_key:
+    type: string
+
+  user:
+    description: >
+      User for connecting to agent VM's
+    type: string
+    default: ubuntu
+
+  edge_gateway:
+    type: string
+    default: gateway
+    description: >
+      For 'ondemand' service type, the value of edge_gateway
+      is always 'gateway'
+
+  management_network_name:
+    type: string
+
+  vcloud_username:
+    type: string
+
+  vcloud_password:
+    type: string
+
+  vcloud_token:
+    type: string
+    default: ''
+
+  vcloud_url:
+    type: string
+
+  vcloud_service:
+    type: string
+
+  vcloud_service_type:
+    type: string
+    default: 'subscription'
+
+  vcloud_instance:
+    type: string
+    default: ''
+    description: >
+      Only required for ondemand service type.
+
+  vcloud_api_version:
+    type: string
+    default: '5.6'
+
+  vcloud_org_url:
+    type: string
+    default: ''
+    description: >
+      Only required if using token based login on a private vcloud
+      director. This can be obtained by following the vcloud API
+      example docs. If you are unsure of how to obtain this, you will
+      need to use password based login.
+
+  vcloud_org:
+    type: string
+
+  vcloud_vdc:
+    type: string
+
+node_types:
+
+  # base server type for installation without agent
+  agentless-nodecellar.nodes.ParentTypeServer:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      install_agent:
+        default: false
+      cloudify_agent:
+        default:
+          user: ubuntu
+          home_dir: /home/ubuntu
+
+  vcloud_configuration:
+    derived_from: cloudify.nodes.Root
+    properties:
+      vcloud_config: {}
+
+node_templates:
+
+  vcloud_configuration:
+    type: vcloud_configuration
+    properties:
+      vcloud_config:
+        username: { get_input: vcloud_username }
+        password: { get_input: vcloud_password }
+        token: { get_input: vcloud_token }
+        url: { get_input: vcloud_url }
+        service: { get_input: vcloud_service }
+        org: { get_input: vcloud_org }
+        vdc: { get_input: vcloud_vdc }
+        service_type: { get_input: vcloud_service_type }
+        instance: { get_input: vcloud_instance }
+        api_version: { get_input: vcloud_api_version }
+        org_url: { get_input: vcloud_org_url }
+        edge_gateway: { get_input: edge_gateway }
+
+  nodejs_nat:
+    type: cloudify.vcloud.nodes.PublicNAT
+    properties:
+      nat:
+        edge_gateway: { get_input: edge_gateway }
+      rules:
+       - type: DNAT
+         protocol: tcp
+         original_port: 8080
+         translated_port: 8080
+       - type: DNAT
+         protocol: tcp
+         original_port: 22
+         translated_port: 22
+      vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+  nodejs_host:
+    type: agentless-nodecellar.nodes.ParentTypeServer
+    relationships:
+      - target: nodejs_nat
+        type: cloudify.vcloud.server_connected_to_public_nat
+    properties:
+      server:
+        catalog: { get_input: catalog }
+        template: { get_input: template }
+        hardware:
+          cpu: { get_input: server_cpu }
+          memory: { get_input: server_memory }
+        guest_customization:
+          public_keys:
+            -
+             key:  { get_input: user_public_key }
+             user: { get_input: user }
+        management_network: { get_input: management_network_name }
+        vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+  mongod_host:
+    type: agentless-nodecellar.nodes.ParentTypeServer
+    properties:
+      server:
+        catalog: { get_input: catalog }
+        template: { get_input: template }
+        hardware:
+          cpu: { get_input: server_cpu }
+          memory: { get_input: server_memory }
+        guest_customization:
+          public_keys:
+            -
+             key:  { get_input: user_public_key }
+             user: { get_input: user }
+        management_network: { get_input: management_network_name }
+        vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+  nodejs:
+    type: agentless-nodecellar.nodes.NodeJSServer
+    relationships:
+        - target: nodejs_host
+          type: cloudify.relationships.contained_in
+
+  mongod:
+    type: agentless-nodecellar.nodes.MongoDatabase
+    relationships:
+        - target: mongod_host
+          type: cloudify.relationships.contained_in
+
+  nodecellar:
+    type: agentless-nodecellar.nodes.nodecellar
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          inputs:
+            task_properties:
+              config:
+                mongo: { get_attribute: [mongod_host, ip] }
+    relationships:
+      - type: cloudify.relationships.connected_to
+        target: mongod
+      - type: cloudify.relationships.contained_in
+        target: nodejs
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      public_ip: { get_attribute: [ nodejs_nat, public_ip ] }
