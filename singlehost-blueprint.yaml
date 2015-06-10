@@ -21,12 +21,12 @@ inputs:
   host_ip:
       description: >
         The ip of the host the application will be deployed on
-      default: '127.0.0.1'
+      default: 'my_public_ip_placeholder'
 
   agent_user:
       description: >
         User name used when SSH-ing into the started machine
-      default: 'root'
+      default: 'ubuntu'
 
   agent_private_key_path:
       description: >
