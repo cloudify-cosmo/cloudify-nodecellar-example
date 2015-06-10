@@ -6,9 +6,9 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.2m7/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.2m7/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.2m7/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.2/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
   - types/nodecellar.yaml
   - types/haproxy.yaml
 
@@ -35,6 +35,44 @@ inputs:
       User for connecting to agent VM's
 
 node_types:
+
+  nodecellar.nodes.Healer:
+    derived_from: cloudify.nodes.SoftwareComponent
+    properties:
+      nodes_to_heal:
+        description: List of node names to perform autohealing on
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/healer/start-healer.sh
+          executor: central_deployment_agent
+        stop:
+          implementation: scripts/healer/stop-healer.sh
+          executor: central_deployment_agent
+
+  nodecellar.nodes.NodeJSHostScaler:
+    derived_from: cloudify.nodes.SoftwareComponent
+    properties:
+      nodejs_host_node_name:
+        description: >
+          this is the name of the nodejs host node as it appears
+          in the node_templates section. this node will scaled according to
+          the mongo metrics.
+      mongo_node_name:
+        description: >
+          mongo node name. scaling will be performed by the total
+          connections count made to this node.
+      threshold:
+        description: threshold of total connections to mongod.
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/scaler/start-scaler.sh
+          executor: central_deployment_agent
+        stop:
+          implementation: scripts/scaler/stop-scaler.sh
+          executor: central_deployment_agent
 
   ###########################################################
   # We define a type that inherits openstack's default
@@ -92,6 +130,49 @@ node_types:
 
 node_templates:
 
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#
+# Infrastructure Level Stuff
+# Like Virtual Hosts, Security Groups, Networks, etc
+#
+#####################################################################################
+
+  manager:
+    type: cloudify.nodes.Compute
+    properties:
+       install_agent: false
+
+  healer:
+    type: nodecellar.nodes.Healer
+    relationships:
+      - target: nodejs_host
+        type: cloudify.relationships.depends_on
+      - target: manager
+        type: cloudify.relationships.contained_in
+    properties:
+      nodes_to_heal:
+        - nodejs_host
+
+  nodejs_host_scaler:
+    type: nodecellar.nodes.NodeJSHostScaler
+    relationships:
+      - target: mongod
+        type: cloudify.relationships.depends_on
+      - target: manager
+        type: cloudify.relationships.contained_in
+    properties:
+      nodejs_host_node_name: nodejs_host
+      mongo_node_name: mongod
+      threshold: 1000
+
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
@@ -142,6 +223,87 @@ node_templates:
 
       - type: cloudify.openstack.server_connected_to_security_group
         target: haproxy_frontend_security_group
+
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+
+  ###########################################################
+  # A security group to enable access to the mongo host
+  # using the port of the mongo node.
+  #
+  # We need this so that the nodecellar application can
+  # comminicate with MongoDB, since they are running on
+  # different hosts.
+  ###########################################################
+
+  mongod_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: mongod_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ mongod, port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 28017
+
+  ###########################################################
+  # A security group to enable access to the haproxy frontend
+  # host using the haproxy frontend_port property.
+  # In addition, we open the statistics port (9000) of haproxy
+  #
+  # This security group will be attached to the
+  # haproxy_frontend_host
+  ###########################################################
+
+  haproxy_frontend_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: haproxy_frontend_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, frontend_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, statistics_port ]}
+
+  ###########################################################
+  # A floating ip to be attached to the haproxy frontend host,
+  # since eventually we want to be able to access the application
+  # from any machine, on any network.
+  ###########################################################
+
+  frontend_floatingip:
+    type: cloudify.openstack.nodes.FloatingIP
+
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#####################################################################################
+#
+# Application Level Stuff
+# Like Databases, Applications, Webservers, Runtime Environments, etc
+#
+#####################################################################################
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -252,73 +414,6 @@ node_templates:
                 HAProxyCollector:
                   config:
                     url: http://127.0.0.1:9000/haproxy_stats;csv
-
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
-
-  ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
-  ###########################################################
-
-  mongod_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: mongod_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: 28017
-
-  ###########################################################
-  # A security group to enable access to the haproxy frontend
-  # host using the haproxy frontend_port property.
-  # In addition, we open the statistics port (9000) of haproxy
-  #
-  # This security group will be attached to the
-  # haproxy_frontend_host
-  ###########################################################
-
-  haproxy_frontend_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: haproxy_frontend_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, frontend_port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, statistics_port ]}
-
-  ###########################################################
-  # A floating ip to be attached to the haproxy frontend host,
-  # since eventually we want to be able to access the application
-  # from any machine, on any network.
-  ###########################################################
-
-  frontend_floatingip:
-    type: cloudify.openstack.nodes.FloatingIP
-
 
 ###########################################################
 # This outputs section exposes the application endpoint.
