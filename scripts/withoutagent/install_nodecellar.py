@@ -28,7 +28,7 @@ def _generate_service(mongodb_host):
 def install(config):
     script = []
     script.append("""
-wget https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz 2>&1
+wget https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz -c -v 2>&1
 tar -xvf master.tar.gz
 cd nodecellar-master && npm update
     """)
@@ -42,6 +42,7 @@ cd nodecellar-master && npm update
 sudo cp /home/ubuntu/nodecellar.conf /etc/init/nodecellar.conf
 sudo chown root:root /etc/init/nodecellar.conf
 # run service
+sudo initctl stop nodecellar || echo "not started"
 sudo initctl start nodecellar
     """)
     _run("\n".join(script))

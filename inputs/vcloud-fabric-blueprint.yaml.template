@@ -1,0 +1,3 @@
+catalog: default-catalog
+template: Ubuntu Server 12.04 LTS (amd64 20150127)
+user_public_key: ''

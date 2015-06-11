@@ -26,7 +26,8 @@ script:
     - cfy blueprints validate -p host-pool-blueprint.yaml
     - cfy blueprints validate -p vcloud-without-agent-blueprint.yaml
     - cfy blueprints validate -p vcloud-haproxy-blueprint.yaml
-    - cfy blueprints validate -p  vcloud-blueprint.yaml
+    - cfy blueprints validate -p vcloud-blueprint.yaml
+    - cfy blueprints validate -p vcloud-fabric-blueprint.yaml
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
     - cfy local execute -w uninstall

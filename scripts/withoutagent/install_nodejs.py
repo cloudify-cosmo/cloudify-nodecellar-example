@@ -11,8 +11,7 @@ def install(config):
     ctx.logger.info("Config: " + str(config))
     script = []
     script.append("""
-sudo apt-get install python-software-properties -q -y 2>&1
-sudo apt-add-repository ppa:chris-lea/node.js -y 2>&1
+curl -sL https://deb.nodesource.com/setup | sudo bash -
 sudo apt-get update 2>&1
 sudo apt-get install nodejs make g++ wget -q -y 2>&1
     """)
