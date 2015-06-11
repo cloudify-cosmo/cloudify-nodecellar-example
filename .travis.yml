@@ -10,7 +10,7 @@ install:
     - pip install https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.3m1.zip
     - pip install https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.3m1.zip
     - pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/3.3m1.zip
-    - pip install https://github.com/cloudify-cosmo/tosca-vcloud-plugin/archive/master.zip
+    - pip install https://github.com/cloudify-cosmo/tosca-vcloud-plugin/archive/1.3m1.zip
 
 script:
     - cfy init
