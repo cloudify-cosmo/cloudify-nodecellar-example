@@ -1,0 +1,348 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on an amazon ec2 cloud environment.
+###########################################################
+
+tosca_definitions_version: cloudify_dsl_1_1
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - http://www.getcloudify.org/spec/aws-plugin/1.2/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
+  - types/nodecellar.yaml
+  - types/haproxy.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
+inputs:
+
+  image:
+    description: >
+      Image to be used when launching agent VM's
+
+  size:
+    description: >
+      Flavor of the agent VM's
+
+  agent_user:
+    description: >
+      User for connecting to agent VM's
+
+node_types:
+
+  nodecellar.nodes.Healer:
+    derived_from: cloudify.nodes.SoftwareComponent
+    properties:
+      nodes_to_heal:
+        description: List of node names to perform autohealing on
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/healer/start-healer.sh
+          executor: central_deployment_agent
+        stop:
+          implementation: scripts/healer/stop-healer.sh
+          executor: central_deployment_agent
+
+  nodecellar.nodes.NodeJSHostScaler:
+    derived_from: cloudify.nodes.SoftwareComponent
+    properties:
+      nodejs_host_node_name:
+        description: >
+          this is the name of the nodejs host node as it appears
+          in the node_templates section. this node will scaled according to
+          the mongo metrics.
+      mongo_node_name:
+        description: >
+          mongo node name. scaling will be performed by the total
+          connections count made to this node.
+      threshold:
+        description: threshold of total connections to mongod.
+        type: integer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: scripts/scaler/start-scaler.sh
+          executor: central_deployment_agent
+        stop:
+          implementation: scripts/scaler/stop-scaler.sh
+          executor: central_deployment_agent
+
+  ###########################################################
+  # We define a type that inherits ec2's default
+  # server, and adds monitoring capabillities on top of it.
+  ###########################################################
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.aws.nodes.Instance
+    properties:
+      cloudify_agent:
+        default:
+          user: { get_input: agent_user }
+    interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                default:
+                  interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                default:
+                  CPUCollector: {}
+                  MemoryCollector: {}
+                  LoadAverageCollector: {}
+                  DiskUsageCollector:
+                    config:
+                      devices: x?vd[a-z]+[0-9]*$
+                  NetworkCollector: {}
+
+node_templates:
+
+  manager:
+    type: cloudify.nodes.Compute
+    properties:
+       install_agent: false
+
+  healer:
+    type: nodecellar.nodes.Healer
+    relationships:
+      - target: nodejs_host
+        type: cloudify.relationships.depends_on
+      - target: manager
+        type: cloudify.relationships.contained_in
+    properties:
+      nodes_to_heal:
+        - nodejs_host
+
+  nodejs_host_scaler:
+    type: nodecellar.nodes.NodeJSHostScaler
+    relationships:
+      - target: mongod
+        type: cloudify.relationships.depends_on
+      - target: manager
+        type: cloudify.relationships.contained_in
+    properties:
+      nodejs_host_node_name: nodejs_host
+      mongo_node_name: mongod
+      threshold: 100000
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
+    relationships:
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: mongod_security_group
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
+    relationships:
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: nodecellar_security_group
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      image_id: { get_input: image }
+      instance_type: { get_input: size }
+    relationships:
+
+      ###########################################################
+      # Attaching a floating ip to the haproxy frontend host
+      ###########################################################
+
+      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
+        target: nodecellar_elasticip
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: haproxy_frontend_security_group
+
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+        ###########################################################
+        # The MongoDBCollector depends on a python library called
+        # pymongo. We install this library in the 'configure'
+        # lifecycle hook of this node.
+        ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                MongoDBCollector:
+                  config:
+                    hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+      - type: app_connected_to_haproxy
+        target: haproxy
+
+  nodecellar_security_group:
+    type: cloudify.aws.nodes.SecurityGroup
+    properties:
+      description: Security Group for Nodecellar VMs
+      rules:
+        - ip_protocol: tcp
+          from_port: { get_property: [ nodecellar, port ] }
+          to_port: { get_property: [ nodecellar, port ] }
+          cidr_ip: 0.0.0.0/0
+
+  ###########################################################
+  # A security group to enable access to the mongo host
+  # using the port of the mongo node.
+  #
+  # We need this so that the nodecellar application can
+  # comminicate with MongoDB, since they are running on
+  # different hosts.
+  ###########################################################
+
+  mongod_security_group:
+    type: cloudify.aws.nodes.SecurityGroup
+    properties:
+      description: Security Group for Mongo VMs
+      rules:
+        - ip_protocol: tcp
+          from_port: { get_property: [ mongod, port ] }
+          to_port: { get_property: [ mongod, port ] }
+          cidr_ip: 0.0.0.0/0
+        - ip_protocol: tcp
+          from_port: 28017
+          to_port: 28017
+          cidr_ip: 0.0.0.0/0
+
+  haproxy_frontend_security_group:
+    type: cloudify.aws.nodes.SecurityGroup
+    properties:
+      description: haproxy frontend
+      rules:
+        - ip_protocol: tcp
+          from_port: { get_property: [ haproxy, frontend_port ] }
+          to_port: { get_property: [ haproxy, frontend_port ] }
+          cidr_ip: 0.0.0.0/0
+        - ip_protocol: tcp
+          from_port: { get_property: [ haproxy, statistics_port ] }
+          to_port: { get_property: [ haproxy, statistics_port ] }
+          cidr_ip: 0.0.0.0/0
+
+
+  haproxy:
+    type: haproxy.nodes.Proxy
+    properties:
+
+      ###########################################################
+      # This is the port that will be used by haproxy.
+      ###########################################################
+      frontend_port: 80
+
+      ###########################################################
+      # This is the port that will be used by haproxy to display
+      # statistics.
+      ###########################################################
+      statistics_port: 9000
+
+      backend_app_port: { get_property: [ nodecellar, port ] }
+
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
+
+  ###########################################################
+  # A floating ip to be attached to the nodejs host, since
+  # eventually we want to be able to access it
+  # from any machine, on any network.
+  ###########################################################
+
+  nodecellar_elasticip:
+    type: cloudify.aws.nodes.ElasticIP
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodecellar_elasticip, aws_resource_id ] }
+      port: { get_property: [ haproxy, frontend_port ] }

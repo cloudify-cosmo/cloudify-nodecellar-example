@@ -143,7 +143,9 @@ class NodeInstanceHealer(object):
 
     def heal(self):
         return self.cloudify.executions.start(
-            deployment_id, 'heal', {'node_id': self.instance_id}).id
+            deployment_id, 'heal',
+            {'node_instance_id': self.instance_id}).id
+
 
 
 def maybe_heal():
@@ -165,9 +167,12 @@ if __name__ == '__main__':
     nodes_to_heal = json.loads(sys.argv[1].replace("'", '"'))
     deployment_id = sys.argv[2]
 
+    temp_directory = '/tmp'
+
     # configure files
-    log_file = os.path.expanduser('~/{0}-healer.log'.format(deployment_id))
-    state_file = os.path.expanduser('~/{0}-healer.state'.format(deployment_id))
+    log_file = '{0}/{1}-healer.log'.format(temp_directory, deployment_id)
+    state_file = '{0}/{1}-healer.state'.format(temp_directory, deployment_id)
+
     if not os.path.exists(state_file):
         # create state file if doesn't exist
         open(state_file, 'w').close()

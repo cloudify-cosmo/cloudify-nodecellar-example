@@ -88,7 +88,7 @@ def state():
         f.write(os.linesep)
 
 
-def maybe_scale():
+def maybe_scale(threshold):
 
     # check if there is a scaling process already running
     validate_scaling()
@@ -105,6 +105,8 @@ def maybe_scale():
 
     instances = cloudify.node_instances.list(
         deployment_id, mongo_node_name)
+
+    threshold = threshold * len(instances)
 
     def _get_sum_mongo_connections(instance_id):
         query = 'select sum(value) from /{0}\.{1}\.{' \
@@ -144,9 +146,12 @@ if __name__ == '__main__':
     deployment_id = sys.argv[3]
     threshold = int(sys.argv[4])
 
+    temp_directory = '/tmp'
+
     # configure files
-    log_file = os.path.expanduser('~/{0}-scaler.log'.format(deployment_id))
-    state_file = os.path.expanduser('~/{0}-scaler.state'.format(deployment_id))
+    log_file = '{0}/{1}-scaler.log'.format(temp_directory, deployment_id)
+    state_file = '{0}/{1}-scaler.state'.format(temp_directory, deployment_id)
+
     if not os.path.exists(state_file):
         # create state file if doesn't exist
         open(state_file, 'w').close()
@@ -161,4 +166,4 @@ if __name__ == '__main__':
     sys.excepthook = new_exception_hook
 
     # execute scale logic
-    maybe_scale()
+    maybe_scale(threshold)
