@@ -37,6 +37,18 @@ inputs:
         type: string
         default: '5.6'
 
+    nodejs_ssh:
+        type: string
+        default: 22
+        description: >
+            Ssh port for nodejs host
+
+    mongo_ssh:
+        type: string
+        default: 22
+        description: >
+            Ssh port for mongodb host
+
     vcloud_org_url:
         type: string
         default: ''
@@ -232,7 +244,7 @@ node_templates:
                translated_port: 8080
              - type: DNAT
                protocol: tcp
-               original_port: 22
+               original_port: { get_input: nodejs_ssh }
                translated_port: 22
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
@@ -245,7 +257,7 @@ node_templates:
             rules:
              - type: DNAT
                protocol: tcp
-               original_port: 23
+               original_port: { get_input: mongo_ssh }
                translated_port: 22
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
@@ -258,14 +270,14 @@ node_templates:
             rules:
                 - source: any
                   destination: internal
-                  destination_port: 22
+                  destination_port: { get_input: nodejs_ssh }
                   action: allow
                   description: >
                         ssh to node_js
                   protocol: TCP
                 - source: any
                   destination: internal
-                  destination_port: 23
+                  destination_port: { get_input: mongo_ssh }
                   action: allow
                   description: >
                         ssh to mongo
@@ -319,7 +331,7 @@ node_templates:
                             user: { get_input: servers_user }
                             key_filename: { get_input: private_key_path }
                             host_string: { get_attribute: [nodejs_host_nat, public_ip] }
-                            port: 22
+                            port: { get_input: nodejs_ssh }
 
     mongod:
         type: agentless-nodecellar.nodes.MongoDatabase
@@ -334,7 +346,7 @@ node_templates:
                             user: { get_input: servers_user }
                             key_filename: { get_input: private_key_path }
                             host_string: { get_attribute: [mongo_server_nat, public_ip] }
-                            port: 23
+                            port: { get_input: mongo_ssh }
 
     nodecellar:
         type: agentless-nodecellar.nodes.nodecellar
@@ -349,7 +361,7 @@ node_templates:
                             user: { get_input: servers_user }
                             key_filename: { get_input: private_key_path }
                             host_string: { get_attribute: [nodejs_host_nat, public_ip] }
-                            port: 22
+                            port: { get_input: nodejs_ssh }
         relationships:
           - type: cloudify.relationships.contained_in
             target: nodejs
