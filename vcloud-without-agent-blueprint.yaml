@@ -45,9 +45,15 @@ inputs:
 
     mongo_ssh:
         type: string
-        default: 22
+        default: 23
         description: >
             Ssh port for mongodb host
+
+    nodejs_http:
+        type: string
+        default: 8080
+        description: >
+            Http port for nodejs host
 
     vcloud_org_url:
         type: string
@@ -89,12 +95,19 @@ inputs:
         type: string
         default: pool
 
-    port_ip_address:
+    nodejs_ip_address:
         type: string
         default: ''
         description: >
             For 'ondemand' service type, the value of
-            floating_ip_public_ip can be empty
+            nodejs_ip_address can be empty
+
+    mongo_ip_address:
+        type: string
+        default: ''
+        description: >
+            For 'ondemand' service type, the value of
+            mongo_ip_address can be empty
 
     common_network_public_nat_use_existing:
         type: boolean
@@ -226,7 +239,7 @@ node_templates:
             use_external_resource: { get_input: common_network_public_nat_use_existing }
             nat:
                 edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: port_ip_address }
+                public_ip: { get_input: nodejs_ip_address }
             rules:
                 - type: SNAT
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
@@ -236,11 +249,11 @@ node_templates:
         properties:
             nat:
                 edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: port_ip_address }
+                public_ip: { get_input: nodejs_ip_address }
             rules:
              - type: DNAT
                protocol: tcp
-               original_port: 8080
+               original_port: { get_input: nodejs_http }
                translated_port: 8080
              - type: DNAT
                protocol: tcp
@@ -253,7 +266,7 @@ node_templates:
         properties:
             nat:
                 edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: port_ip_address }
+                public_ip: { get_input: mongo_ip_address }
             rules:
              - type: DNAT
                protocol: tcp
