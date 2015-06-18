@@ -9,33 +9,48 @@ imports:
 inputs:
     vcloud_username:
         type: string
+        description: >
+            User login for vcloud air
 
     vcloud_password:
         type: string
+        default: ''
+        description: >
+            User password for vcloud air - for login by name + password
 
     vcloud_token:
         type: string
         default: ''
+        description: >
+            User token for vcloud air - for login by name + token
 
     vcloud_url:
         type: string
+        description: >
+            Vcloud url
 
     vcloud_service:
         type: string
+        description: >
+            Vcloud service
 
     vcloud_service_type:
         type: string
         default: 'subscription'
+        description: >
+            Type of service: subscription, ondemand, vcd, private
 
     vcloud_instance:
         type: string
         default: ''
         description: >
-            Only required for ondemand service type.
+            Only required for ondemand service type, instance uuid
 
     vcloud_api_version:
         type: string
         default: '5.6'
+        description: >
+            Version of api, for now 5.6
 
     nodejs_ssh:
         type: string
@@ -66,34 +81,54 @@ inputs:
 
     vcloud_org:
         type: string
+        description: >
+            Organization uuid
 
     vcloud_vdc:
         type: string
+        description: >
+            Virtual data center name
 
     catalog:
         type: string
+        description: >
+            Name of catalog, can be 'Public Catalog'
 
     template:
         type: string
+        description: >
+            Name of template from catalog,
+            can be 'Ubuntu Server 12.04 LTS (amd64 20150127)'
 
     server_cpu:
         type: string
         default: 2
+        description: >
+            Count cpu on nodes
 
     server_memory:
         type: string
         default: 4096
+        description: >
+            Amount memmory on nodes
 
     network_use_existing:
         type: boolean
         default: false
+        description: >
+            Use existed network
 
     common_network_name:
         type: string
+        description: >
+            Name common network taht can be used for nodes
 
     port_ip_allocation_mode:
         type: string
         default: pool
+        description: >
+            Ip allocation type for case when you doesn't set public ip
+            for nodes and want auto allocate ip
 
     nodejs_ip_address:
         type: string
@@ -112,6 +147,9 @@ inputs:
     common_network_public_nat_use_existing:
         type: boolean
         default: false
+        description: >
+            Use already existed nat rules, only for case when you
+            doesn't want to change nat rules
 
     edge_gateway:
         type: string
@@ -123,6 +161,8 @@ inputs:
     servers_user:
         default: ubuntu
         type: string
+        description: >
+            Default admin user in os template
 
     private_key_path:
         default: ~/.ssh/cloudify-agent-kp.pem
@@ -133,11 +173,14 @@ inputs:
     user_public_key:
         type: string
         default: ''
+        description: >
+            Public key
 
     resources_prefix:
         type: string
         default: ''
-
+        description: >
+            Prefix for nodes
 
 node_types:
 
