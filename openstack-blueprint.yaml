@@ -3,14 +3,14 @@
 # on an openstack cloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/1.3m2/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3m2/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m5/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/1.3m5/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m5/plugin.yaml
   - types/nodecellar.yaml
-
+  - types/openstack-types.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -34,63 +34,37 @@ inputs:
     description: >
       User for connecting to agent VM's
 
-node_types:
-
-  ###########################################################
-  # We define a type that inherits openstack's default
-  # server, and adds monitoring capabillities on top of it.
-  ###########################################################
-
-  nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.openstack.nodes.Server
-    properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-      server:
-        default:
-          image: { get_input: image }
-          flavor: { get_input: flavor }
-    interfaces:
-
-      ###########################################################
-      # We are infact telling cloudify to install a diamond
-      # monitoring agent on the server.
-      #
-      # (see https://github.com/BrightcoveOS/Diamond)
-      ###########################################################
-
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                default:
-                  interval: 1
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-
-      ###########################################################
-      # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                default:
-                  CPUCollector: {}
-                  MemoryCollector: {}
-                  LoadAverageCollector: {}
-                  DiskUsageCollector:
-                    config:
-                      devices: x?vd[a-z]+[0-9]*$
-                  NetworkCollector: {}
-
 node_templates:
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
@@ -108,10 +82,10 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the nodejs host
+      # Attaching an ip to the nodejs host
       ###########################################################
 
-      - target: nodecellar_floatingip
+      - target: nodecellar_ip
         type: cloudify.openstack.server_connected_to_floating_ip
 
       ###########################################################
@@ -121,80 +95,6 @@ node_templates:
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
-
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    properties:
-      port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-
-        ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
-        ###########################################################
-
-        configure: scripts/mongo/install-pymongo.sh
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the MongoDB.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: "localhost:27017"
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
-
-  nodecellar:
-    type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
-    relationships:
-
-      ################################
-      # Setting the mongo connection
-      ################################
-
-      - type: node_connected_to_mongo
-        target: mongod
-
-      ################################
-      # Setting the nodejs connection
-      ################################
-
-      - type: node_contained_in_nodejs
-        target: nodejs
-
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -217,12 +117,29 @@ node_templates:
           port: 28017
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # A security group to enable access to the nodejs host
+  # using the port of the nodejs node.
+  #
+  # We need this so that the nodecellar application can
+  # receive web traffic.
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
+  # An ip to be attached to the nodejs host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################
 
-  nodecellar_floatingip:
+  nodecellar_ip:
     type: cloudify.openstack.nodes.FloatingIP
 
 ###########################################################
@@ -235,5 +152,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }

@@ -1,16 +1,11 @@
-###########################################################
-# This Blueprint installs the nodecellar application
-# on hosts from an existing host-pool using the
-# cloudify-host-pool-plugin
-###########################################################
-
 tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m5/types.yaml
-  - http://www.getcloudify.org/spec/host-pool-plugin/1.3m5/plugin.yaml
+  - http://www.getcloudify.org/spec/vsphere-plugin/1.3m5/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m5/plugin.yaml
   - types/nodecellar.yaml
-  - types/host-pool-types.yaml
+  - types/vsphere-types.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -22,9 +17,21 @@ imports:
 
 inputs:
 
-  host_pool_service_endpoint:
+  template_name:
     description: >
-      URL to the host pool service that will allocate hosts.
+      Template to clone VMs from
+
+  agent_user:
+    description: >
+      User for connecting to application VMs
+
+  management_network:
+    description: >
+      Which network to deploy the VM on
+
+  external_network:
+    description: >
+      Which network to deploy the VM on
 
 node_templates:
 
@@ -47,7 +54,7 @@ node_templates:
         target: nodejs
 
   mongod:
-    type: nodecellar.nodes.MongoDatabase
+    type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -58,21 +65,16 @@ node_templates:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
-  nodejs_host:
-    type: nodecellar.nodes.Host
-
   mongod_host:
-    type: nodecellar.nodes.Host
+    type: nodecellar.nodes.MonitoredServer
 
-###########################################################
-# This outputs section exposes the application endpoint.
-# You can access it by running:
-#   - cfy deployments -d <deployment_id> outputs
-###########################################################
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
 
 outputs:
+
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, public_address ] }
-      port: { get_property: [nodecellar, port] }
+      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      port: { get_property: [ nodecellar, port ] }

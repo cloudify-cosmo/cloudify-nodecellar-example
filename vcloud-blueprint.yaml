@@ -3,29 +3,38 @@
 # on an vcloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m5/types.yaml
   - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3m2/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m5/plugin.yaml
   - types/nodecellar.yaml
-
+  - types/vcloud-types.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
 # blueprint for creating different deployments, each one
 # with its own parameters.
 # to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
 #####################################################################################
 
 inputs:
 
-  catalog:
+  template:
     type: string
 
-  template:
+  agent_user:
+    description: >
+      User for connecting to agent VM's
+    type: string
+    default: ubuntu
+
+  agent_public_key:
+    type: string
+
+  catalog:
     type: string
 
   server_cpu:
@@ -38,15 +47,6 @@ inputs:
     description: >
       memory amount for each server
 
-  agent_public_key:
-    type: string
-
-  agent_user:
-    description: >
-      User for connecting to agent VM's
-    type: string
-    default: ubuntu
-
   edge_gateway:
     type: string
     default: gateway
@@ -54,129 +54,10 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
-node_types:
-
-  ###########################################################
-  # We define a type that inherits vcloud's default
-  # server, and adds monitoring capabillities on top of it.
-  ###########################################################
-
-  nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.vcloud.nodes.Server
-    properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-          home_dir: /home/ubuntu
-      server:
-        default:
-          catalog: { get_input: catalog }
-          template: { get_input: template }
-          hardware:
-            cpu: { get_input: server_cpu }
-            memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
-    interfaces:
-
-      ###########################################################
-      # We are infact telling cloudify to install a diamond
-      # monitoring agent on the server.
-      #
-      # (see https://github.com/BrightcoveOS/Diamond)
-      ###########################################################
-
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                default:
-                  interval: 1
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-
-      ###########################################################
-      # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                default:
-                  CPUCollector: {}
-                  MemoryCollector: {}
-                  LoadAverageCollector: {}
-                  DiskUsageCollector:
-                    config:
-                      devices: x?vd[a-z]+[0-9]*$
-                  NetworkCollector: {}
-
 node_templates:
-
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
-
-  nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
-    relationships:
-
-      ###########################################################
-      # Attaching a floating ip to the nodejs host
-      ###########################################################
-
-      - target: nodecellar_floatingip
-        type: cloudify.vcloud.server_connected_to_floating_ip
-
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    properties:
-      port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-
-        ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
-        ###########################################################
-
-        configure: scripts/mongo/install-pymongo.sh
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the MongoDB.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: "localhost:27017"
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
     relationships:
 
       ################################
@@ -193,13 +74,39 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # Attaching an ip to the nodejs host
+      ###########################################################
+
+      - target: nodecellar_ip
+        type: cloudify.vcloud.server_connected_to_floating_ip
+
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # An ip to be attached to the nodejs host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################
 
-  nodecellar_floatingip:
+  nodecellar_ip:
     type: cloudify.vcloud.nodes.FloatingIP
     properties:
       floatingip:
@@ -215,6 +122,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_floatingip, floating_ip_address ] }
-      public_ip: { get_attribute: [ nodecellar_floatingip, public_ip ] }
+      ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
+      public_ip: { get_attribute: [ nodecellar_ip, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
