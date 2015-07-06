@@ -10,6 +10,7 @@ imports:
   - http://www.getcloudify.org/spec/aws-plugin/1.3m5/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m5/plugin.yaml
   - types/nodecellar.yaml
+  - types/aws-ec2-types.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -33,122 +34,10 @@ inputs:
     description: >
       User for connecting to agent VM's
 
-node_types:
-
-  ###########################################################
-  # We define a type that inherits ec2's default
-  # server, and adds monitoring capabillities on top of it.
-  ###########################################################
-
-  nodecellar.nodes.MonitoredServer:
-    derived_from: cloudify.aws.nodes.Instance
-    properties:
-      cloudify_agent:
-        default:
-          user: { get_input: agent_user }
-    interfaces:
-
-      ###########################################################
-      # We are infact telling cloudify to install a diamond
-      # monitoring agent on the server.
-      #
-      # (see https://github.com/BrightcoveOS/Diamond)
-      ###########################################################
-
-      cloudify.interfaces.monitoring_agent:
-          install:
-            implementation: diamond.diamond_agent.tasks.install
-            inputs:
-              diamond_config:
-                default:
-                  interval: 1
-          start: diamond.diamond_agent.tasks.start
-          stop: diamond.diamond_agent.tasks.stop
-          uninstall: diamond.diamond_agent.tasks.uninstall
-
-      ###########################################################
-      # Adding some collectors. These collectors are necessary
-      # for the Cloudify UI to display the deafult metrics.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                default:
-                  CPUCollector: {}
-                  MemoryCollector: {}
-                  LoadAverageCollector: {}
-                  DiskUsageCollector:
-                    config:
-                      devices: x?vd[a-z]+[0-9]*$
-                  NetworkCollector: {}
-
 node_templates:
-
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      image_id: { get_input: image }
-      instance_type: { get_input: size }
-    relationships:
-      - type: cloudify.aws.relationships.instance_connected_to_security_group
-        target: mongod_security_group
-
-  nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      image_id: { get_input: image }
-      instance_type: { get_input: size }
-    relationships:
-      - type: cloudify.aws.relationships.instance_connected_to_security_group
-        target: nodecellar_security_group
-      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
-        target: nodecellar_elasticip
-
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    properties:
-      port: 27017
-    interfaces:
-      cloudify.interfaces.lifecycle:
-
-        ###########################################################
-        # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
-        # lifecycle hook of this node.
-        ###########################################################
-
-        configure: scripts/mongo/install-pymongo.sh
-
-      ###########################################################
-      # Notice that this node defines an additional collector
-      # to collect data on the MongoDB.
-      ###########################################################
-
-      cloudify.interfaces.monitoring:
-          start:
-            implementation: diamond.diamond_agent.tasks.add_collectors
-            inputs:
-              collectors_config:
-                MongoDBCollector:
-                  config:
-                    hosts: "localhost:27017"
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
     relationships:
 
       ################################
@@ -165,22 +54,46 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
 
-  nodecellar_security_group:
-    type: cloudify.aws.nodes.SecurityGroup
-    properties:
-      description: Security Group for Nodecellar VMs
-      rules:
-        - ip_protocol: tcp
-          from_port: { get_property: [ nodecellar, port ] }
-          to_port: { get_property: [ nodecellar, port ] }
-          cidr_ip: 0.0.0.0/0
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # Attaching the mongo security group to the mongo host
+      ###########################################################
+
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: mongod_security_group
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # Attaching a floating ip to the nodejs host
+      ###########################################################
+
+      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
+        target: nodecellar_ip
+ 
+      ###########################################################
+      # Attaching the nodecellar security group to the nodejs host
+      ###########################################################
+
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
+        target: nodecellar_security_group
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -206,12 +119,30 @@ node_templates:
           cidr_ip: 0.0.0.0/0
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # A security group to enable access to the nodejs host
+  # using the port of the nodejs node.
+  #
+  # We need this so that the nodecellar application can
+  # receive web traffic.
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.aws.nodes.SecurityGroup
+    properties:
+      description: Security Group for Nodecellar VMs
+      rules:
+        - ip_protocol: tcp
+          from_port: { get_property: [ nodecellar, port ] }
+          to_port: { get_property: [ nodecellar, port ] }
+          cidr_ip: 0.0.0.0/0
+
+  ###########################################################
+  # An ip to be attached to the nodejs host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################
 
-  nodecellar_elasticip:
+  nodecellar_ip:
     type: cloudify.aws.nodes.ElasticIP
 
 ###########################################################
@@ -224,5 +155,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_elasticip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodecellar_ip, aws_resource_id ] }
       port: { get_property: [ nodecellar, port ] }
