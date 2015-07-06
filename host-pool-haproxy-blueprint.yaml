@@ -1,16 +1,17 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on a softlayer cloud environment.
+# on hosts from an existing host-pool using the
+# cloudify-host-pool-plugin
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m4/types.yaml
-  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m4/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
-  - types/softlayer-types.yaml
+  - types/host-pool-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -22,40 +23,9 @@ imports:
 
 inputs:
 
-  location:
+  host_pool_service_endpoint:
     description: >
-      Location of the data center
-      Default value is the location id of Melbourne 1
-    default: 449596
-
-  domain: 
-    description: The domain
-    default: cloudify.org
-
-  ram:
-    description: >
-      Item id of the ram
-      Default value is the item id of 16 GB
-    default: 1017
-
-  cpu: 
-    description: >
-      Item id of the cpu
-      Default value is the item id of 4 x 2.0 GHz Cores
-    default: 859
-
-  disk: 
-    description: >
-      Item id of the disk
-      Default value is the item id of 25 GB (SAN)
-    default: 1178
-
-  os: 
-    description: >
-      Item id of the operating system
-      Default value is the item id of
-      Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)
-    default: 4668
+      URL to the host pool service that will allocate hosts.
 
 node_templates:
 
@@ -78,7 +48,7 @@ node_templates:
         target: nodejs
 
   mongod:
-    type: nodecellar.nodes.MonitoredMongoDatabase
+    type: nodecellar.nodes.MongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
         target: mongod_host
@@ -89,15 +59,29 @@ node_templates:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
+  ########################################
+  # Note: only ubuntu haproxy installation
+  # is supported.
+  ########################################
+
+  haproxy:
+    type: haproxy.nodes.Proxy
     properties:
-      hostname: mongod
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: haproxy_frontend_host
 
   nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      hostname: nodejs
+    type: nodecellar.nodes.Host
+    instances:
+      deploy: 2
+
+  mongod_host:
+    type: nodecellar.nodes.Host
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.Host
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -109,5 +93,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
-      port: { get_property: [ nodecellar, port ] }
+      ip_address: { get_attribute: [ nodejs_host, public_address ] }
+      port: { get_property: [nodecellar, port] }

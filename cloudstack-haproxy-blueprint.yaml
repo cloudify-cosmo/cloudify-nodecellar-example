@@ -6,6 +6,7 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
   - types/cloudstack-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -66,6 +67,13 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
   mongod:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
@@ -77,6 +85,19 @@ node_templates:
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
+
+  ########################################
+  # Note: only ubuntu haproxy installation
+  # is supported.
+  ########################################
+
+  haproxy:
+    type: nodecellar.nodes.MonitoredHAProxy
+    properties:
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: haproxy_frontend_host
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
@@ -101,21 +122,14 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-    properties:
-      portmaps:
-        - protocol: TCP
-          private_port: { get_property: [ nodecellar, port ] }
-          private_end_port: { get_property: [ nodecellar, port ] }
-          public_port: { get_property: [ nodecellar, port ] }
-          public_end_port: { get_property: [ nodecellar, port ] }
-          open_firewall: True
-        - protocol: TCP
-          private_port: 8081
-          private_end_port: 8081
-          public_port: 8081
-          public_end_port: 8081
-          open_firewall: False
 
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
     relationships:
 
       ###########################################################
@@ -135,8 +149,39 @@ node_templates:
       - type: cloudify.relationships.connected_to
         target: management_network
 
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      portmaps:
+        - protocol: TCP
+          private_port: { get_property: [ nodecellar, port ] }
+          private_end_port: { get_property: [ nodecellar, port ] }
+          public_port: { get_property: [ nodecellar, port ] }
+          public_end_port: { get_property: [ nodecellar, port ] }
+          open_firewall: True
+        - protocol: TCP
+          private_port: { get_property: [ haproxy, frontend_port ] }
+          private_end_port: { get_property: [ haproxy, frontend_port ] }
+          public_port: { get_property: [ haproxy, frontend_port ] }
+          public_end_port: { get_property: [ haproxy, frontend_port ] }
+          open_firewall: True
+        - protocol: TCP
+          private_port: { get_property: [ haproxy, statistics_port ]}
+          private_end_port: { get_property: [ haproxy, statistics_port ]}
+          public_port: { get_property: [ haproxy, statistics_port ]}
+          public_end_port: { get_property: [ haproxy, statistics_port ]}
+          open_firewall: True
+        - protocol: TCP
+          private_port: 8081
+          private_end_port: 8081
+          public_port: 8081
+          public_end_port: 8081
+          open_firewall: False
+
+    relationships:
+
       ###########################################################
-      # Attach the ip to the nodejs host
+      # Attach the floating ip to the haproxy host
       ###########################################################
 
       - type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
@@ -163,7 +208,6 @@ node_templates:
   # be the default network for hosts.
   ###########################################################
 
-
   nodecellar_network:
     type: cloudify.cloudstack.nodes.Network
     properties:
@@ -184,7 +228,7 @@ node_templates:
         - type: ingress
           protocol: TCP
           cidr: 0.0.0.0/0
-          ports: [{ get_property: [ nodecellar, port ] }]
+          ports: [ { get_property: [ nodecellar, port ] }, { get_property: [ haproxy, frontend_port ] } ]
 
         ###########################################################
         # Allow outgoing traffic so that hosts can download
@@ -197,7 +241,7 @@ node_templates:
           ports: [80, 443]
 
   ###########################################################
-  # An ip to be attached to the nodejs host, since
+  # An ip to be attached to the haproxy frontend host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################

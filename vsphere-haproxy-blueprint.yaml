@@ -1,16 +1,12 @@
-###########################################################
-# This Blueprint installs the nodecellar application
-# on a softlayer cloud environment.
-###########################################################
-
 tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m4/types.yaml
-  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m4/plugin.yaml
+  - http://www.getcloudify.org/spec/vsphere-plugin/1.3m4/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
-  - types/softlayer-types.yaml
+  - types/vsphere-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -22,40 +18,21 @@ imports:
 
 inputs:
 
-  location:
+  template_name:
     description: >
-      Location of the data center
-      Default value is the location id of Melbourne 1
-    default: 449596
+      Template to clone VMs from
 
-  domain: 
-    description: The domain
-    default: cloudify.org
-
-  ram:
+  agent_user:
     description: >
-      Item id of the ram
-      Default value is the item id of 16 GB
-    default: 1017
+      User for connecting to application VMs
 
-  cpu: 
+  management_network:
     description: >
-      Item id of the cpu
-      Default value is the item id of 4 x 2.0 GHz Cores
-    default: 859
+      Which network to deploy the VM on
 
-  disk: 
+  external_network:
     description: >
-      Item id of the disk
-      Default value is the item id of 25 GB (SAN)
-    default: 1178
-
-  os: 
-    description: >
-      Item id of the operating system
-      Default value is the item id of
-      Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)
-    default: 4668
+      Which network to deploy the VM on
 
 node_templates:
 
@@ -77,6 +54,13 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
   mongod:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
@@ -89,25 +73,35 @@ node_templates:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
+  haproxy:
+    type: nodecellar.nodes.MonitoredHAProxy
+    properties:
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
+
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
-    properties:
-      hostname: mongod
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-    properties:
-      hostname: nodejs
 
-###########################################################
-# This outputs section exposes the application endpoint.
-# You can access it by running:
-#   - cfy deployments -d <deployment_id> outputs
-###########################################################
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
 
 outputs:
+
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      ip_address: { get_attribute: [ haproxy_frontend_host, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
