@@ -104,8 +104,6 @@ node_templates:
     relationships:
       - type: cloudify.aws.relationships.instance_connected_to_security_group
         target: nodecellar_security_group
-      - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
-        target: nodecellar_elasticip
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -205,15 +203,6 @@ node_templates:
           to_port: 28017
           cidr_ip: 0.0.0.0/0
 
-  ###########################################################
-  # A floating ip to be attached to the nodejs host, since
-  # eventually we want to be able to access it
-  # from any machine, on any network.
-  ###########################################################
-
-  nodecellar_elasticip:
-    type: cloudify.aws.nodes.ElasticIP
-
 ###########################################################
 # This outputs section exposes the application endpoint.
 # You can access it by running:
@@ -224,5 +213,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_elasticip, floating_ip_address ] }
+      ip_address: { get_attribute: [ nodejs_host, public_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
