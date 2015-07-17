@@ -1,0 +1,180 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-vsphere-plugin/master/plugin.yaml?access_token={CLOUDIFY_AUTOMATION_TOKEN}
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
+  - types/nodecellar.yaml
+
+inputs:
+
+  template_name:
+    description: >
+      Template to clone VMs from
+
+  agent_user:
+    description: >
+      User for connecting to application VMs
+
+  agent_key:
+    description: >
+      Password for connecting to application VMs
+
+  vm_network:
+    description: >
+      Which network to deploy the VM on
+
+  mongo_vm_name:
+    description: >
+      What to call the mongo VM
+    default: cloudify-cellar-mongo
+
+  node_vm_name:
+    description: >
+      What to call the node VM
+    default: cloudify-cellar-node
+
+node_types:
+
+  ###########################################################
+  # We define a type that inherits vsphere's default
+  # virtual machine, and adds monitoring
+  # capabillities on top of it.
+  #
+  # One thing to note here:
+  #
+  #  - We use our 'management_network_resource_id' input
+  #    as the default value for the management network name.
+  #
+  #    This will be used for letting the management machine
+  #    know which ip it should connect to when installing
+  #    agents.
+  #
+  ###########################################################
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.vsphere.nodes.Server
+    properties:
+      cloudify_agent:
+          default:
+            user: { get_input: agent_user }
+            key: { get_input: agent_key }
+      server:
+        default:
+          template: { get_input: template_name }
+          cpus: 1
+          memory: 2048
+      networking:
+        default:
+          connect_networks:
+            - name: { get_input: vm_network }
+              switch_distributed: True
+
+    interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
+      cloudify.interfaces.monitoring_agent:
+        install:
+          implementation: diamond.diamond_agent.tasks.install
+          inputs:
+            diamond_config:
+              default:
+                interval: 1
+        start: diamond.diamond_agent.tasks.start
+        stop: diamond.diamond_agent.tasks.stop
+        uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              default:
+                CPUCollector: {}
+                MemoryCollector: {}
+                LoadAverageCollector: {}
+                DiskUsageCollector:
+                  config:
+                    devices: x?vd[a-z]+[0-9]*$
+                NetworkCollector: {}
+
+node_templates:
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    instances:
+      deploy: 1
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    properties:
+      port: 27017
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+      ###########################################################
+      # The MongoDBCollector depends on a python library called
+      # pymongo. We install this library in the 'configure'
+      # lifecycle hook of this node.
+      ###########################################################
+
+        configure: scripts/mongo/install-pymongo.sh
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the MongoDB.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+        start:
+          implementation: diamond.diamond_agent.tasks.add_collectors
+          inputs:
+            collectors_config:
+              MongoDBCollector:
+                config:
+                  hosts: "localhost:27017"
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: 8080
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
