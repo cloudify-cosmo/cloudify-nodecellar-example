@@ -3,12 +3,12 @@
 # on a softlayer cloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.2rc1/types.yaml
-  - http://www.getcloudify.org/spec/softlayer-plugin/1.2rc1/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.2rc1/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
+  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m3/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
 
 #####################################################################################
@@ -23,12 +23,12 @@ inputs:
   location: 
     description: >
       Location of the data center
-      Default value is the location id of Hong kong 2
-    default: 352494
+      Default value is the location id of Melbourne 1
+    default: 449596
   domain: 
     description: The domain
     default: cloudify.org
-  ram: 
+  ram:
     description: >
       Item id of the ram
       Default value is the item id of 16 GB
@@ -46,8 +46,9 @@ inputs:
   os: 
     description: >
       Item id of the operating system
-      Default value is the item id of Ubuntu Linux 12.04 
-    default: 4174
+      Default value is the item id of
+      Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)
+    default: 4668
 
 node_types:
 
@@ -116,12 +117,12 @@ node_templates:
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      hostname: mongod-host
+      hostname: mongod
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      hostname: nodejs-host
+      hostname: nodejs
 
   mongod:
     type: nodecellar.nodes.MongoDatabase

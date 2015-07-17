@@ -1,0 +1,49 @@
+node_types:
+
+  # template for nodejs node
+  agentless-nodecellar.nodes.NodeJSServer:
+    derived_from: cloudify.nodes.WebServer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_nodejs.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
+
+  # template for mongo node
+  agentless-nodecellar.nodes.MongoDatabase:
+    derived_from: cloudify.nodes.DBMS
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_mongo.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
+
+  #template for nodejs application nodecellar
+  agentless-nodecellar.nodes.nodecellar:
+    derived_from: cloudify.nodes.ApplicationModule
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fabric.fabric_plugin.tasks.run_task
+          inputs:
+            tasks_file:
+              default: scripts/withoutagent/install_nodecellar.py
+            task_name:
+              default: install
+            task_properties:
+              default:
+               config: {}
