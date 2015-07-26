@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
-  - http://s3.amazonaws.com/adaml_docker/vsphere_plugin.yaml
+  - http://www.getcloudify.org/spec/vsphere-plugin/1.2.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
   - types/nodecellar.yaml
 
