@@ -37,22 +37,6 @@ inputs:
 
 node_types:
 
-  ###########################################################
-  # We define a type that inherits vsphere's default
-  # virtual machine, and adds monitoring
-  # capabillities on top of it.
-  #
-  # One thing to note here:
-  #
-  #  - We use our 'management_network_resource_id' input
-  #    as the default value for the management network name.
-  #
-  #    This will be used for letting the management machine
-  #    know which ip it should connect to when installing
-  #    agents.
-  #
-  ###########################################################
-
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.vsphere.nodes.Server
     properties:
@@ -182,3 +166,11 @@ node_templates:
 
       - type: node_contained_in_nodejs
         target: nodejs
+
+outputs:
+
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodecellar_public_ip, public_ip ] }
+      port: { get_property: [ nodecellar, port ] }
