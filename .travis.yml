@@ -21,6 +21,7 @@ script:
     - cfy blueprints validate -p openstack-haproxy-blueprint.yaml
     - cfy blueprints validate -p singlehost-blueprint.yaml
     - cfy blueprints validate -p softlayer-blueprint.yaml
+    - cfy blueprints validate -p vsphere-blueprint.yaml
     - cfy blueprints validate -p cloudstack-blueprint.yaml
     - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
     - cfy blueprints validate -p host-pool-blueprint.yaml
