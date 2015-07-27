@@ -101,13 +101,9 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
-    instances:
-      deploy: 1
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-    instances:
-      deploy: 1
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -172,5 +168,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodecellar_public_ip, public_ip ] }
+      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
