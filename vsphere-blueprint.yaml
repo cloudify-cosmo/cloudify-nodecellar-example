@@ -24,17 +24,6 @@ inputs:
     description: >
       Which network to deploy the VM on
 
-
-  mongo_vm_name:
-    description: >
-      What to call the mongo VM
-    default: cloudify-cellar-mongo
-
-  node_vm_name:
-    description: >
-      What to call the node VM
-    default: cloudify-cellar-node
-
 node_types:
 
   nodecellar.nodes.MonitoredServer:
