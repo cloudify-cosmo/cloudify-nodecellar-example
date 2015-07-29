@@ -1,9 +1,9 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-vsphere-plugin/master/plugin.yaml?access_token={CLOUDIFY_AUTOMATION_TOKEN}
-  - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
+  - http://www.getcloudify.org/spec/vsphere-plugin/1.3m3/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
 
 inputs:
@@ -16,41 +16,15 @@ inputs:
     description: >
       User for connecting to application VMs
 
-  agent_key:
-    description: >
-      Password for connecting to application VMs
-
-  vm_network:
+  management_network:
     description: >
       Which network to deploy the VM on
 
-  mongo_vm_name:
+  external_network:
     description: >
-      What to call the mongo VM
-    default: cloudify-cellar-mongo
-
-  node_vm_name:
-    description: >
-      What to call the node VM
-    default: cloudify-cellar-node
+      Which network to deploy the VM on
 
 node_types:
-
-  ###########################################################
-  # We define a type that inherits vsphere's default
-  # virtual machine, and adds monitoring
-  # capabillities on top of it.
-  #
-  # One thing to note here:
-  #
-  #  - We use our 'management_network_resource_id' input
-  #    as the default value for the management network name.
-  #
-  #    This will be used for letting the management machine
-  #    know which ip it should connect to when installing
-  #    agents.
-  #
-  ###########################################################
 
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.vsphere.nodes.Server
@@ -58,7 +32,6 @@ node_types:
       cloudify_agent:
           default:
             user: { get_input: agent_user }
-            key: { get_input: agent_key }
       server:
         default:
           template: { get_input: template_name }
@@ -67,8 +40,12 @@ node_types:
       networking:
         default:
           connect_networks:
-            - name: { get_input: vm_network }
+            - name: { get_input: management_network }
               switch_distributed: True
+              management: True
+            - name: { get_input: external_network }
+              switch_distributed: True
+              external: True
 
     interfaces:
 
@@ -113,13 +90,9 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
-    instances:
-      deploy: 1
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-    instances:
-      deploy: 1
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
@@ -178,3 +151,11 @@ node_templates:
 
       - type: node_contained_in_nodejs
         target: nodejs
+
+outputs:
+
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      port: { get_property: [ nodecellar, port ] }
