@@ -23,8 +23,8 @@ inputs:
   location: 
     description: >
       Location of the data center
-      Default value is the location id of Hong kong 2
-    default: 352494
+      Default value is the location id of Melbourne 1
+    default: 449596
   domain: 
     description: The domain
     default: cloudify.org
