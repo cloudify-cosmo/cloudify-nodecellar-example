@@ -82,7 +82,13 @@ node_types:
       ###########################################################
       cloudify.interfaces.lifecycle:
         delete:
+          implementation: softlayer.softlayer_plugin.server.delete
           max_retries: 200
+          inputs:
+            retry_interval_secs:
+              description: the interval in seconds between consecutive retries until transactions start
+              default: 30
+              type: integer
 
       cloudify.interfaces.monitoring_agent:
           install:
