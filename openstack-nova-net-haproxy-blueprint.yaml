@@ -1,6 +1,7 @@
 ###########################################################
-# This Blueprint installs the nodecellar application behind
-# an haproxy instance on an openstack cloud environment.
+# This Blueprint installs the nodecellar application
+# on an openstack cloud environment with nova network
+# (as opposed to neutron network
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_1
@@ -18,7 +19,7 @@ imports:
 # blueprint for creating different deployments, each one
 # with its own parameters.
 # to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
 #####################################################################################
 
 inputs:
@@ -110,7 +111,6 @@ node_templates:
       deploy: 2
 
     relationships:
-
       ###########################################################
       # Attaching the nodecellar security group to
       # the nodecellar host
@@ -118,6 +118,7 @@ node_templates:
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
+
 
   haproxy_frontend_host:
     type: nodecellar.nodes.MonitoredServer
@@ -146,12 +147,12 @@ node_templates:
   ###########################################################
 
   nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
+    type: cloudify.openstack.nova_net.nodes.SecurityGroup
     properties:
-      security_group:
-        name: nodecellar_security_group
+      resource_id: nodecellar_security_group
+      description: Nodecellar security group
       rules:
-        - remote_ip_prefix: 0.0.0.0/0
+        - cidr: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
 
   ###########################################################
@@ -164,14 +165,14 @@ node_templates:
   ###########################################################
 
   mongod_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
+    type: cloudify.openstack.nova_net.nodes.SecurityGroup
     properties:
-      security_group:
-        name: mongod_security_group
+      resource_id: mongod_security_group
+      description: MongoDB security group
       rules:
-        - remote_ip_prefix: 0.0.0.0/0
+        - cidr: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
-        - remote_ip_prefix: 0.0.0.0/0
+        - cidr: 0.0.0.0/0
           port: 28017
 
   ###########################################################
@@ -184,10 +185,10 @@ node_templates:
   ###########################################################
 
   haproxy_frontend_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
+    type: cloudify.openstack.nova_net.nodes.SecurityGroup
     properties:
-      security_group:
-        name: haproxy_frontend_security_group
+      resource_id: haproxy_security_group
+      description: HAProxy security group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ haproxy, frontend_port ] }
@@ -201,7 +202,7 @@ node_templates:
   ###########################################################
 
   nodecellar_ip:
-    type: cloudify.openstack.nodes.FloatingIP
+    type: cloudify.openstack.nova_net.nodes.FloatingIP
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -214,4 +215,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
-      port: { get_property: [haproxy, frontend_port] }
+      port: { get_property: [ nodecellar, port ] }
