@@ -1,18 +1,36 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on a local machine.
+# on an existing host.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:  
   - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m2/plugin.yaml
   - types/nodecellar.yaml
+  - types/simple-types.yaml
+
+###########################################################
+# Inputs section allows the user to use same
+# blueprint several times, with different paramters for
+# each time.
+###########################################################
 
 inputs:
 
   host_ip:
-    default: localhost
+      description: >
+        The ip of the host the application will be deployed on
+
+  agent_user:
+      description: >
+        User name used when SSH-ing into the started machine
+
+  agent_public_key:
+      description: >
+        Path to a private key that resided on the management machine.
+        SSH-ing into agent machines will be done with this key.
 
 node_templates:
 
@@ -35,7 +53,7 @@ node_templates:
         target: nodejs
 
   mongod:
-    type: nodecellar.nodes.MongoDatabase
+    type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
@@ -47,10 +65,12 @@ node_templates:
         target: host
 
   host:
-    type: cloudify.nodes.Compute
+    type: nodecellar.nodes.MonitoredServer
     properties:
       ip: { get_input: host_ip }
-      install_agent: false
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_public_key }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -62,5 +82,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: localhost
-      port: { get_property: [nodecellar, port] }
+      ip_address: { get_property: [ host, ip ] }
+      port: { get_property: [ nodecellar, port ] }
+

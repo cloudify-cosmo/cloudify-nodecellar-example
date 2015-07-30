@@ -12,7 +12,7 @@ node_types:
       frontend_port:
         description: The port for HAProxy to listen on.
         type: integer
-        default: 80
+        default: 8080
       statistics_port:
         description: The port HAProxy will listen on for statistics requests.
         type: integer
@@ -75,6 +75,28 @@ node_types:
             invocation:
               default:
                 function: stop
+
+  nodecellar.nodes.MonitoredHAProxy:
+    derived_from: haproxy.nodes.Proxy
+    interfaces:
+
+      ###########################################################
+      # Notice that this node defines an additional collector
+      # to collect data on the haproxy instance.
+      # Also notice that in the URL, port 9000 is used. If you
+      # choose to change this port on the haproxy node template,
+      # this URL should be updated as well.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                default:
+                  HAProxyCollector:
+                    config:
+                      url: http://127.0.0.1:9000/haproxy_stats;csv
 
 relationships:
   app_connected_to_haproxy:
