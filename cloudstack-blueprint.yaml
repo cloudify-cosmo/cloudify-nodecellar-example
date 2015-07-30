@@ -1,0 +1,209 @@
+tosca_definitions_version: cloudify_dsl_1_1
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/cloudstack-plugin/1.3m2/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m2/plugin.yaml
+  - types/nodecellar.yaml
+  - types/cloudstack-types.yaml
+
+inputs:
+
+  image:
+    description: >
+      Image to be used when launching application VMs
+
+  size:
+    description: >
+      The image size of the application VMs
+
+  agent_user:
+    description: >
+      User for connecting to application VMs
+
+  cloudstack_zone:
+    description: >
+      The CloudStack zone the application will be installed in
+
+  cloudstack_network_service_offering:
+    description: >
+      The CloudStack serviceoffering of the application network created by the blueprint
+
+  management_network_resource_id:
+    description: >
+      The name of the cloudify management network created during the manager bootstrap process
+
+  nodecellar_network_resource_id:
+    description: >
+      The name of the dedicated application network to be created.
+    default: nodecellar_network
+
+node_templates:
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all connected
+      # network nodes.
+      ###########################################################
+
+      - type: cloudify.relationships.depends_on
+        target: nodecellar_network
+
+      ###########################################################
+      # We need this relationship in order to retrieve the
+      # management network id when creating agent VM's
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: management_network
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      portmaps:
+        - protocol: TCP
+          private_port: { get_property: [ nodecellar, port ] }
+          private_end_port: { get_property: [ nodecellar, port ] }
+          public_port: { get_property: [ nodecellar, port ] }
+          public_end_port: { get_property: [ nodecellar, port ] }
+          open_firewall: True
+        - protocol: TCP
+          private_port: 8081
+          private_end_port: 8081
+          public_port: 8081
+          public_end_port: 8081
+          open_firewall: False
+
+    relationships:
+
+      ###########################################################
+      # We need the network to be created before the VM, since
+      # the VM will attempt to connect to all connected
+      # network nodes.
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: nodecellar_network
+
+      ###########################################################
+      # We need this relationship in order to retrieve the
+      # management network id when creating agent VM's
+      ###########################################################
+
+      - type: cloudify.relationships.connected_to
+        target: management_network
+
+      ###########################################################
+      # Attach the floating ip to the nodejs host
+      ###########################################################
+
+      - type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
+        target: nodecellar_ip
+
+  ###########################################################
+  # This node represents the existing management
+  # network created by the bootstrap process.
+  # Agent VM's will be connected to this network,
+  # making them accessible from the management machine.
+  ###########################################################
+
+  management_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: { get_input: management_network_resource_id }
+      use_external_resource: True
+      network:
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
+
+  ###########################################################
+  # A new network dedicated for the application. This will
+  # be the default network for hosts.
+  ###########################################################
+
+
+  nodecellar_network:
+    type: cloudify.cloudstack.nodes.Network
+    properties:
+      resource_id: { get_input: nodecellar_network_resource_id }
+      network:
+        service_offering: { get_input: cloudstack_network_service_offering }
+        zone: { get_input: cloudstack_zone }
+        gateway: 10.4.1.1
+        netmask: 255.255.255.0
+      firewall:
+
+        ###########################################################
+        # Allow incoming traffic to the application to pass
+        # the firewall
+        # be the default network for hosts.
+        ###########################################################
+
+        - type: ingress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [{ get_property: [ nodecellar, port ] }]
+
+        ###########################################################
+        # Allow outgoing traffic so that hosts can download
+        # resources from the internet.
+        ###########################################################
+
+        - type: egress
+          protocol: TCP
+          cidr: 0.0.0.0/0
+          ports: [80, 443]
+
+  nodecellar_ip:
+    type: cloudify.cloudstack.nodes.FloatingIP
+    relationships:
+
+      ###########################################################
+      # Notice we are assigning an IP from the dedicated
+      # application network
+      ###########################################################
+
+      - type: cloudify.cloudstack.floating_ip_connected_to_network
+        target: nodecellar_network
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
+      port: { get_property: [ nodecellar, port ] }
+

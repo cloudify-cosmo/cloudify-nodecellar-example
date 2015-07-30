@@ -1,9 +1,26 @@
-
 node_types:
+
+  ###########################################################
+  # We define a type that inherits cloudstack's default
+  # virtual machine, and adds monitoring
+  # capabillities on top of it.
+  #
+  # Two things to note here:
+  #
+  #  - We use our 'management_network_resource_id' input
+  #    as the default value for the management network name.
+  #
+  #    This will be used for letting the management machine
+  #    know which ip it should connect to when installing
+  #    agents.
+  #
+  #  - We use our 'nodecellar_network_resource_id' input
+  #    as the default value for the host network.
+  #
+  ###########################################################
 
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.cloudstack.nodes.VirtualMachine
-
     properties:
       management_network_name:
 
@@ -14,15 +31,16 @@ node_types:
 
         default: { get_input: management_network_resource_id }
       cloudify_agent:
-          default:
-            user: { get_input: agent_user }
+        default:
+          user: { get_input: agent_user }
       server:
         default:
           image_id: { get_input: image }
           size: { get_input: size }
-      network:
-        default:
-          default_network: { get_input: nodecellar_network_resource_id }
+      # Uncomment network definition for cloudstack-vpc
+      # network:
+      #   default:
+      #     default_network: { get_input: nodecellar_network_resource_id }
 
     interfaces:
 
