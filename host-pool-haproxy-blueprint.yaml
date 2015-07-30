@@ -57,7 +57,7 @@ node_templates:
   ########################################
 
   haproxy:
-    type: nodecellar.nodes.MonitoredHAProxy
+    type: haproxy.nodes.Proxy
     properties:
       backend_app_port: { get_property: [ nodecellar, port ] }
     relationships:
