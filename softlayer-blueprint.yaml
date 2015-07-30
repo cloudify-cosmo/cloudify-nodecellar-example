@@ -80,6 +80,9 @@ node_types:
       #
       # (see https://github.com/BrightcoveOS/Diamond)
       ###########################################################
+      cloudify.interfaces.lifecycle:
+        delete:
+          max_retries: 200
 
       cloudify.interfaces.monitoring_agent:
           install:
