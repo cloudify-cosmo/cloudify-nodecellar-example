@@ -16,6 +16,10 @@ script:
     - cfy init
     - cfy blueprints validate -p aws-ec2-blueprint.yaml
     - cfy blueprints validate -p aws-ec2-haproxy-blueprint.yaml
+    - cfy blueprints validate -p cloudstack-blueprint.yaml
+    - cfy blueprints validate -p cloudstack-haproxy-blueprint.yaml
+    - cfy blueprints validate -p host-pool-blueprint.yaml
+    - cfy blueprints validate -p host-pool-haproxy-blueprint.yaml
     - cfy blueprints validate -p local-blueprint.yaml
     - cfy blueprints validate -p openstack-blueprint.yaml
     - cfy blueprints validate -p openstack-haproxy-blueprint.yaml
@@ -24,13 +28,11 @@ script:
     - cfy blueprints validate -p simple-blueprint.yaml
     - cfy blueprints validate -p softlayer-blueprint.yaml
     - cfy blueprints validate -p softlayer-haproxy-blueprint.yaml
-    - cfy blueprints validate -p cloudstack-blueprint.yaml
-    - cfy blueprints validate -p cloudstack-haproxy-blueprint.yaml
-    # - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
-    - cfy blueprints validate -p host-pool-blueprint.yaml
-    # - cfy blueprints validate -p vcloud-without-agent-blueprint.yaml
     - cfy blueprints validate -p vcloud-blueprint.yaml
     - cfy blueprints validate -p vcloud-haproxy-blueprint.yaml
+    # These have been temporarily evicted due to doubts about their use.
+    # - cfy blueprints validate -p cloudstack-vpc-blueprint.yaml
+    # - cfy blueprints validate -p vcloud-without-agent-blueprint.yaml
     # - cfy blueprints validate -p vcloud-fabric-blueprint.yaml
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
