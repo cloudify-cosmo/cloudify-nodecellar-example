@@ -94,14 +94,14 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the nodejs host
+      # Attaching an ip to the nodejs host
       ###########################################################
 
       - target: nodecellar_ip
         type: cloudify.vcloud.server_connected_to_floating_ip
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # An ip to be attached to the nodejs host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################

@@ -240,6 +240,12 @@ node_templates:
           cidr: 0.0.0.0/0
           ports: [80, 443]
 
+  ###########################################################
+  # An ip to be attached to the haproxy frontend host, since
+  # eventually we want to be able to access it
+  # from any machine, on any network.
+  ###########################################################
+
   nodecellar_ip:
     type: cloudify.cloudstack.nodes.FloatingIP
     relationships:

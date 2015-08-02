@@ -1,6 +1,11 @@
 
 node_types:
 
+  ###########################################################
+  # We define a type that inherits vcloud's default
+  # server, and adds monitoring capabillities on top of it.
+  ###########################################################
+
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.vsphere.nodes.Server
     properties:

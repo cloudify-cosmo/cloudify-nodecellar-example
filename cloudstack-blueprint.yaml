@@ -136,7 +136,7 @@ node_templates:
         target: management_network
 
       ###########################################################
-      # Attach the floating ip to the nodejs host
+      # Attach the ip to the nodejs host
       ###########################################################
 
       - type: cloudify.cloudstack.virtual_machine_connected_to_floating_ip
@@ -195,6 +195,12 @@ node_templates:
           protocol: TCP
           cidr: 0.0.0.0/0
           ports: [80, 443]
+
+  ###########################################################
+  # An ip to be attached to the nodejs host, since
+  # eventually we want to be able to access it
+  # from any machine, on any network.
+  ###########################################################
 
   nodecellar_ip:
     type: cloudify.cloudstack.nodes.FloatingIP

@@ -121,14 +121,14 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the haproxy host
+      # Attaching a ip to the haproxy host
       ###########################################################
 
       - target: nodecellar_floatingip
         type: cloudify.vcloud.server_connected_to_floating_ip
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # An ip to be attached to the haproxy frontend host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################

@@ -124,7 +124,7 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the haproxy frontend host
+      # Attaching an ip to the haproxy frontend host
       ###########################################################
 
       - type: cloudify.openstack.server_connected_to_floating_ip
@@ -137,22 +137,6 @@ node_templates:
 
       - type: cloudify.openstack.server_connected_to_security_group
         target: haproxy_frontend_security_group
-
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -175,6 +159,22 @@ node_templates:
           port: 28017
 
   ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodecellar application.
+  #
+  # This security group will be attached to the nodejs_host
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
   # A security group to enable access to the haproxy frontend
   # host using the haproxy frontend_port property.
   # In addition, we open the statistics port (9000) of haproxy
@@ -195,8 +195,8 @@ node_templates:
           port: { get_property: [ haproxy, statistics_port ]}
 
   ###########################################################
-  # A floating ip to be attached to the haproxy frontend host,
-  # since eventually we want to be able to access the application
+  # An ip to be attached to the haproxy frontend host, since
+  # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################
 

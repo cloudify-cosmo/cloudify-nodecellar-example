@@ -87,7 +87,12 @@ node_templates:
 
       - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
         target: nodecellar_ip
-      - type: cloudify.aws.relationships.instance_connected_to_security_group
+ 
+      ###########################################################
+      # Attaching the nodecellar security group to the nodejs host
+      ###########################################################
+
+     - type: cloudify.aws.relationships.instance_connected_to_security_group
         target: nodecellar_security_group
 
   ###########################################################
@@ -115,9 +120,10 @@ node_templates:
 
   ###########################################################
   # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
+  # using the port of the nodejs node.
   #
-  # This security group will be attached to the nodejs_host
+  # We need this so that the nodecellar application can
+  # receive web traffic.
   ###########################################################
 
   nodecellar_security_group:
@@ -131,7 +137,7 @@ node_templates:
           cidr_ip: 0.0.0.0/0
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # An ip to be attached to the nodejs host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################

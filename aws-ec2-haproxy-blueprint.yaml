@@ -124,8 +124,9 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the haproxy frontend host
+      # Attaching an ip to the haproxy frontend host
       ###########################################################
+
       - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
         target: nodecellar_ip
 
@@ -136,23 +137,6 @@ node_templates:
 
       - type: cloudify.aws.relationships.instance_connected_to_security_group
         target: haproxy_frontend_security_group
-
-  ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.aws.nodes.SecurityGroup
-    properties:
-      description: Security Group for Nodecellar VMs
-      rules:
-        - ip_protocol: tcp
-          from_port: { get_property: [ nodecellar, port ] }
-          to_port: { get_property: [ nodecellar, port ] }
-          cidr_ip: 0.0.0.0/0
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -175,6 +159,24 @@ node_templates:
         - ip_protocol: tcp
           from_port: 28017
           to_port: 28017
+          cidr_ip: 0.0.0.0/0
+
+  ###########################################################
+  # A security group to enable access to the nodejs host
+  # using the port of the nodejs node.
+  #
+  # We need this so that the nodecellar application can
+  # receive web traffic.
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.aws.nodes.SecurityGroup
+    properties:
+      description: Security Group for Nodecellar VMs
+      rules:
+        - ip_protocol: tcp
+          from_port: { get_property: [ nodecellar, port ] }
+          to_port: { get_property: [ nodecellar, port ] }
           cidr_ip: 0.0.0.0/0
 
   ###########################################################
@@ -201,7 +203,7 @@ node_templates:
           cidr_ip: 0.0.0.0/0
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
+  # An ip to be attached to the haproxy frontend host, since
   # eventually we want to be able to access it
   # from any machine, on any network.
   ###########################################################
