@@ -7,6 +7,14 @@ imports:
   - types/nodecellar.yaml
   - types/cloudstack-types.yaml
 
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
 inputs:
 
   image:

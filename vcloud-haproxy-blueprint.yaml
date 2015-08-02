@@ -18,10 +18,13 @@ imports:
 # blueprint for creating different deployments, each one
 # with its own parameters.
 # to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
 #####################################################################################
 
 inputs:
+
+  template:
+    type: string
 
   agent_user:
     description: >
@@ -33,9 +36,6 @@ inputs:
     type: string
 
   catalog:
-    type: string
-
-  template:
     type: string
 
   server_cpu:

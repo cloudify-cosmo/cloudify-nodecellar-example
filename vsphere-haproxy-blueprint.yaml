@@ -1,15 +1,12 @@
-###########################################################
-# This Blueprint installs the nodecellar application
-# on an existing host.
-###########################################################
-
 tosca_definitions_version: cloudify_dsl_1_1
 
-imports:  
+imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/vsphere-plugin/1.3m2/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m2/plugin.yaml
   - types/nodecellar.yaml
-  - types/simple-types.yaml
+  - types/vsphere-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -21,18 +18,21 @@ imports:
 
 inputs:
 
-  host_ip:
-      description: >
-        The ip of the host the application will be deployed on
+  template_name:
+    description: >
+      Template to clone VMs from
 
   agent_user:
-      description: >
-        User name used when SSH-ing into the started machine
+    description: >
+      User for connecting to application VMs
 
-  agent_public_key:
-      description: >
-        Path to a private key that resided on the management machine.
-        SSH-ing into agent machines will be done with this key.
+  management_network:
+    description: >
+      Which network to deploy the VM on
+
+  external_network:
+    description: >
+      Which network to deploy the VM on
 
 node_templates:
 
@@ -54,36 +54,54 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
   mongod:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: mongod_host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: nodejs_host
 
-  host:
-    type: nodecellar.nodes.MonitoredServer
+  haproxy:
+    type: nodecellar.nodes.MonitoredHAProxy
     properties:
-      ip: { get_input: host_ip }
-      cloudify_agent:
-        user: { get_input: agent_user }
-        key: { get_input: agent_public_key }
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
 
-###########################################################
-# This outputs section exposes the application endpoint.
-# You can access it by running:
-#   - cfy deployments -d <deployment_id> outputs
-###########################################################
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
 
 outputs:
+
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ host, ip ] }
+      ip_address: { get_attribute: [ haproxy_frontend_host, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
-
