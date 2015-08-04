@@ -4,11 +4,11 @@
 # cloudify-host-pool-plugin
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
-  - http://www.getcloudify.org/spec/host-pool-plugin/1.3m2/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
   - types/host-pool-types.yaml
 

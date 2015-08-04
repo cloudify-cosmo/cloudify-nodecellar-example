@@ -3,10 +3,10 @@
 # on a local machine.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:  
-  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
   - types/nodecellar.yaml
 
 inputs:
