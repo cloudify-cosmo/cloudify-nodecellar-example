@@ -92,7 +92,7 @@ node_templates:
       # Attaching the nodecellar security group to the nodejs host
       ###########################################################
 
-     - type: cloudify.aws.relationships.instance_connected_to_security_group
+      - type: cloudify.aws.relationships.instance_connected_to_security_group
         target: nodecellar_security_group
 
   ###########################################################
