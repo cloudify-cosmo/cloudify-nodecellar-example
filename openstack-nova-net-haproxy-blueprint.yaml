@@ -12,6 +12,7 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
   - types/openstack-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -55,6 +56,13 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
   mongod:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
@@ -66,6 +74,19 @@ node_templates:
     relationships:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
+
+  ########################################
+  # Note: only ubuntu haproxy installation
+  # is supported.
+  ########################################
+
+  haproxy:
+    type: nodecellar.nodes.MonitoredHAProxy
+    properties:
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
@@ -80,15 +101,16 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
+
     relationships:
-
-      ###########################################################
-      # Attaching a floating ip to the nodejs host
-      ###########################################################
-
-      - target: nodecellar_ip
-        type: cloudify.openstack.server_connected_to_floating_ip
-
       ###########################################################
       # Attaching the nodecellar security group to
       # the nodecellar host
@@ -96,6 +118,26 @@ node_templates:
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
+
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # Attaching a floating ip to the haproxy frontend host
+      ###########################################################
+
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: nodecellar_ip
+
+      ###########################################################
+      # Attaching the haproxy frontend security group to
+      # the haproxy frontend host
+      ###########################################################
+
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: haproxy_frontend_security_group
 
   ###########################################################
   # A security group to enable access to the nodejs host
@@ -134,8 +176,28 @@ node_templates:
           port: 28017
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
-  # eventually we want to be able to access it
+  # A security group to enable access to the haproxy frontend
+  # host using the haproxy frontend_port property.
+  # In addition, we open the statistics port (9000) of haproxy
+  #
+  # This security group will be attached to the
+  # haproxy_frontend_host
+  ###########################################################
+
+  haproxy_frontend_security_group:
+    type: cloudify.openstack.nova_net.nodes.SecurityGroup
+    properties:
+      resource_id: haproxy_security_group
+      description: HAProxy security group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, frontend_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, statistics_port ]}
+
+  ###########################################################
+  # A floating ip to be attached to the haproxy frontend host,
+  # since eventually we want to be able to access the application
   # from any machine, on any network.
   ###########################################################
 

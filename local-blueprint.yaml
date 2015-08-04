@@ -3,38 +3,21 @@
 # on a local machine.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:  
-  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
   - types/nodecellar.yaml
+
+inputs:
+
+  host_ip:
+    default: localhost
 
 node_templates:
 
-  host:
-    type: cloudify.nodes.Compute
-    properties:
-      ip: localhost
-      install_agent: false
-
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    properties:
-      port: 27017
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
-
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
     relationships:
 
       ################################
@@ -50,6 +33,24 @@ node_templates:
 
       - type: node_contained_in_nodejs
         target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+
+  host:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: host_ip }
+      install_agent: false
 
 ###########################################################
 # This outputs section exposes the application endpoint.

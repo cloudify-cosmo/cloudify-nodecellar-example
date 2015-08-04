@@ -1,16 +1,15 @@
 ###########################################################
 # This Blueprint installs the nodecellar application
-# on a softlayer cloud environment.
+# on an existing host.
 ###########################################################
 
 tosca_definitions_version: cloudify_dsl_1_1
 
-imports:
+imports:  
   - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
-  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m3/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
-  - types/softlayer-types.yaml
+  - types/simple-types.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -22,40 +21,18 @@ imports:
 
 inputs:
 
-  location:
-    description: >
-      Location of the data center
-      Default value is the location id of Melbourne 1
-    default: 449596
+  host_ip:
+      description: >
+        The ip of the host the application will be deployed on
 
-  domain: 
-    description: The domain
-    default: cloudify.org
+  agent_user:
+      description: >
+        User name used when SSH-ing into the started machine
 
-  ram:
-    description: >
-      Item id of the ram
-      Default value is the item id of 16 GB
-    default: 1017
-
-  cpu: 
-    description: >
-      Item id of the cpu
-      Default value is the item id of 4 x 2.0 GHz Cores
-    default: 859
-
-  disk: 
-    description: >
-      Item id of the disk
-      Default value is the item id of 25 GB (SAN)
-    default: 1178
-
-  os: 
-    description: >
-      Item id of the operating system
-      Default value is the item id of
-      Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)
-    default: 4668
+  agent_public_key:
+      description: >
+        Path to a private key that resided on the management machine.
+        SSH-ing into agent machines will be done with this key.
 
 node_templates:
 
@@ -81,23 +58,21 @@ node_templates:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
-        target: mongod_host
+        target: host
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: nodejs_host
+        target: host
 
-  mongod_host:
+  host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      hostname: mongod
-
-  nodejs_host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      hostname: nodejs
+      ip: { get_input: host_ip }
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_public_key }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -109,5 +84,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      ip_address: { get_property: [ host, ip ] }
       port: { get_property: [ nodecellar, port ] }
+

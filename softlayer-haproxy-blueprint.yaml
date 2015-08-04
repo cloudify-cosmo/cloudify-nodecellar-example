@@ -11,6 +11,7 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
   - types/nodecellar.yaml
   - types/softlayer-types.yaml
+  - types/haproxy/haproxy.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -77,6 +78,13 @@ node_templates:
       - type: node_contained_in_nodejs
         target: nodejs
 
+      ################################
+      # Setting the haproxy connection
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
   mongod:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
@@ -89,6 +97,14 @@ node_templates:
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
+  haproxy:
+    type: nodecellar.nodes.MonitoredHAProxy
+    properties:
+      backend_app_port: { get_property: [ nodecellar, port ] }
+    relationships:
+      - target: haproxy_frontend_host
+        type: cloudify.relationships.contained_in
+
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
@@ -96,8 +112,22 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+
+    ###########################################################
+    # Setting the nodejs_host initial number of instances to 2.
+    # The default values for instances.deploy is 1.
+    ###########################################################
+
+    instances:
+      deploy: 2
+
     properties:
       hostname: nodejs
+
+  haproxy_frontend_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      hostname: haproxy
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -109,5 +139,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      ip_address: { get_attribute: [ haproxy_frontend_host, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
