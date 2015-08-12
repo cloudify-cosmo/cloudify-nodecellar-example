@@ -12,7 +12,7 @@ imports:
 
 ###########################################################
 # Inputs section allows the user to use same
-# blueprint several times, with different paramters for
+# blueprint several times, with different parameters for
 # each time.
 ###########################################################
 
