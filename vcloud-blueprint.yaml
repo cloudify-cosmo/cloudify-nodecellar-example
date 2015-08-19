@@ -7,7 +7,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.2/plugin.yaml
   - types/nodecellar.yaml
 
