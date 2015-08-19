@@ -1,0 +1,4 @@
+template_name: vmtemplate
+vm_network: DMZ
+mongo_vm_name: mongo-nodecellar
+node_vm_name: node-nodecellar
