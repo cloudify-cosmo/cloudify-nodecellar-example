@@ -7,7 +7,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m4/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.3m4/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
 
@@ -75,11 +75,6 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
     interfaces:
 
       ###########################################################
@@ -121,8 +116,18 @@ node_types:
 
 node_templates:
 
+  ssh_keypair:
+    type: cloudify.vcloud.nodes.KeyPair
+    properties:
+      public_key:
+        user: { get_input: agent_user }
+        key:  { get_input: agent_public_key }
+
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    relationships:
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
@@ -134,6 +139,8 @@ node_templates:
 
       - target: nodecellar_floatingip
         type: cloudify.vcloud.server_connected_to_floating_ip
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
