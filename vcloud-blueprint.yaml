@@ -75,11 +75,6 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
     interfaces:
 
       ###########################################################

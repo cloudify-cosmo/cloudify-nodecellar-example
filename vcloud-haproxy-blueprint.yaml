@@ -103,11 +103,6 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
       management_network:
         default: { get_input: management_network_name }
     interfaces:
@@ -151,6 +146,13 @@ node_types:
 
 
 node_templates:
+
+  ssh_keypair:
+    type: cloudify.vcloud.nodes.KeyPair
+    properties:
+      public_key:
+        user: { get_input: agent_user }
+        key:  { get_input: agent_public_key }
 
   management_network:
     type: cloudify.vcloud.nodes.Network
@@ -210,7 +212,8 @@ node_templates:
         type: cloudify.vcloud.server_connected_to_port
       - target: management_network_port
         type: cloudify.vcloud.server_connected_to_port
-
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
 
@@ -231,7 +234,8 @@ node_templates:
         type: cloudify.vcloud.server_connected_to_port
       - target: management_network_port
         type: cloudify.vcloud.server_connected_to_port
-
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
   haproxy_frontend_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
@@ -251,6 +255,8 @@ node_templates:
         type: cloudify.vcloud.server_connected_to_port
       - target: management_network_port
         type: cloudify.vcloud.server_connected_to_port
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
