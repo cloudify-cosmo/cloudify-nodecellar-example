@@ -54,6 +54,11 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
+  management_network_name:
+    description: >
+      Name of the existing network that's being used for Cloudify management
+    type: string
+
 node_types:
 
   ###########################################################
@@ -75,6 +80,8 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
+      management_network:
+        default: { get_input: management_network_name }
     interfaces:
 
       ###########################################################
