@@ -6,9 +6,9 @@
 tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3m3/types.yaml
-  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m3/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3m3/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3m4/types.yaml
+  - http://www.getcloudify.org/spec/softlayer-plugin/1.3m4/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
   - types/softlayer-types.yaml
   - types/haproxy/haproxy.yaml
