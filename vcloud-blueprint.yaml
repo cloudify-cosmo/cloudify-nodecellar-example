@@ -7,7 +7,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m4/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.3m4/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3m4/plugin.yaml
   - types/nodecellar.yaml
 
@@ -54,6 +54,11 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
+  management_network_name:
+    description: >
+      Name of the existing network that's being used for Cloudify management
+    type: string
+
 node_types:
 
   ###########################################################
@@ -75,11 +80,8 @@ node_types:
           hardware:
             cpu: { get_input: server_cpu }
             memory: { get_input: server_memory }
-          guest_customization:
-            public_keys:
-              -
-               key:  { get_input: agent_public_key }
-               user: { get_input: agent_user }
+      management_network:
+        default: { get_input: management_network_name }
     interfaces:
 
       ###########################################################
@@ -121,8 +123,57 @@ node_types:
 
 node_templates:
 
+  ssh_keypair:
+    type: cloudify.vcloud.nodes.KeyPair
+    properties:
+      public_key:
+        user: { get_input: agent_user }
+        key:  { get_input: agent_public_key }
+
+  nodejs_security_group:
+      type: cloudify.vcloud.nodes.SecurityGroup
+      properties:
+          security_group:
+              name: nodejsvcloud_security_group
+              edge_gateway: { get_input: edge_gateway }
+          rules:
+              - source: external
+                destination: internal
+                destination_port: 8080
+                action: allow
+                description: >
+                      http to management node
+                protocol: TCP
+              - source: host
+                destination: any
+                action: allow
+                description: >
+                       backward network connection for nodejs updates
+                protocol: any
+          vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+  mongod_security_group:
+      type: cloudify.vcloud.nodes.SecurityGroup
+      properties:
+          security_group:
+              name: mongodvcloud_security_group
+              edge_gateway: { get_input: edge_gateway }
+          rules:
+              - source: host
+                destination: any
+                action: allow
+                description: >
+                       backward network connection for mongod updates
+                protocol: any
+          vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    relationships:
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
+      - target: mongod_security_group
+        type: cloudify.vcloud.server_connected_to_security_group
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
@@ -134,6 +185,10 @@ node_templates:
 
       - target: nodecellar_floatingip
         type: cloudify.vcloud.server_connected_to_floating_ip
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
+      - target: nodejs_security_group
+        type: cloudify.vcloud.server_connected_to_security_group
 
   mongod:
     type: nodecellar.nodes.MongoDatabase
