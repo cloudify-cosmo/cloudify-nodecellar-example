@@ -15,7 +15,7 @@ node_types:
       server:
         default:
           image: { get_input: image }
-          flavor: { get_input: size }
+          flavor: { get_input: flavor }
     interfaces:
 
       ###########################################################
