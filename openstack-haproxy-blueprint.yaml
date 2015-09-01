@@ -27,7 +27,7 @@ inputs:
     description: >
       Image to be used when launching agent VM's
 
-  size:
+  flavor:
     description: >
       Flavor of the agent VM's
 
