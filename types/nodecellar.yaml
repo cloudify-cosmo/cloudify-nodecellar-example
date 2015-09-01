@@ -109,49 +109,6 @@ node_types:
         stop: scripts/nodecellar/stop-nodecellar-app.sh
 
 ################################################################
-# Auto-healing and Auto-scaling specific types
-#
-################################################################
-
-  nodecellar.nodes.Healer:
-    derived_from: cloudify.nodes.SoftwareComponent
-    properties:
-      nodes_to_heal:
-        description: List of node names to perform autohealing on
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        start:
-          implementation: scripts/healer/start-healer.sh
-          executor: central_deployment_agent
-        stop:
-          implementation: scripts/healer/stop-healer.sh
-          executor: central_deployment_agent
-
-  nodecellar.nodes.NodeJSHostScaler:
-    derived_from: cloudify.nodes.SoftwareComponent
-    properties:
-      nodejs_host_node_name:
-        description: >
-          this is the name of the nodejs host node as it appears
-          in the node_templates section. this node will scaled according to
-          the mongo metrics.
-      mongo_node_name:
-        description: >
-          mongo node name. scaling will be performed by the total
-          connections count made to this node.
-      threshold:
-        description: threshold of total connections to mongod.
-        type: integer
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        start:
-          implementation: scripts/scaler/start-scaler.sh
-          executor: central_deployment_agent
-        stop:
-          implementation: scripts/scaler/stop-scaler.sh
-          executor: central_deployment_agent
-
-################################################################
 # Blueprint relationships.
 #
 # specific new relationships for the nodecellar app.
