@@ -29,7 +29,7 @@ inputs:
       description: >
         User name used when SSH-ing into the started machine
 
-  agent_public_key:
+  agent_public_key_path:
       description: >
         Path to a private key that resided on the management machine.
         SSH-ing into agent machines will be done with this key.
