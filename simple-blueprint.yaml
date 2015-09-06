@@ -72,7 +72,7 @@ node_templates:
       ip: { get_input: host_ip }
       cloudify_agent:
         user: { get_input: agent_user }
-        key: { get_input: agent_public_key }
+        key: { get_input: agent_public_key_path }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
