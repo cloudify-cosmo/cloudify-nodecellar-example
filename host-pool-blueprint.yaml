@@ -4,12 +4,21 @@
 # cloudify-host-pool-plugin
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_1
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m5/types.yaml
   - http://www.getcloudify.org/spec/host-pool-plugin/1.3m5/plugin.yaml
   - types/nodecellar.yaml
+  - types/host-pool-types.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
 
 inputs:
 
@@ -17,50 +26,10 @@ inputs:
     description: >
       URL to the host pool service that will allocate hosts.
 
-node_types:
-
-  nodecellar.nodes.Host:
-    derived_from: cloudify.hostpool.nodes.Host
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create:
-          implementation: hostpool.cloudify_hostpool_plugin.tasks.acquire
-          inputs:
-            service_url:
-              default: { get_input: host_pool_service_endpoint }
-        delete:
-          implementation: hostpool.cloudify_hostpool_plugin.tasks.release
-          inputs:
-            service_url:
-              default: { get_input: host_pool_service_endpoint }
-
-
 node_templates:
-
-  nodejs_host:
-    type: nodecellar.nodes.Host
-
-  mongod_host:
-    type: nodecellar.nodes.Host
-
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    properties:
-      port: 27017
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
-    properties:
-      port: 8080
     relationships:
 
       ################################
@@ -76,6 +45,24 @@ node_templates:
 
       - type: node_contained_in_nodejs
         target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  nodejs_host:
+    type: nodecellar.nodes.Host
+
+  mongod_host:
+    type: nodecellar.nodes.Host
 
 ###########################################################
 # This outputs section exposes the application endpoint.
