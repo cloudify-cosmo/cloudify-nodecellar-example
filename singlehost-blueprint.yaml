@@ -123,6 +123,8 @@ node_templates:
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
+    instances:
+      deploy: 4000
     properties:
       port: 8080
     relationships:
