@@ -3,9 +3,9 @@
 # on a local machine.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_1
+tosca_definitions_version: cloudify_dsl_1_2
 
-imports:  
+imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m6/types.yaml
   - types/nodecellar.yaml
 
