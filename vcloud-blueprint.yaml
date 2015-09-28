@@ -54,6 +54,11 @@ inputs:
       For 'ondemand' service type, the value of edge_gateway
       is always 'gateway'
 
+  management_network_name:
+    description: >
+      Name of the existing network that's being used for Cloudify management
+    type: string
+
 node_templates:
 
   ssh_keypair:
