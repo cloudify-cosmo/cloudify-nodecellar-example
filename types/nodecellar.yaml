@@ -130,7 +130,14 @@ relationships:
     derived_from: cloudify.relationships.connected_to
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
-        postconfigure: scripts/mongo/set-mongo-url.sh
+        postconfigure:
+          implementation: scripts/mongo/set-mongo-url.sh
+          inputs:
+            mongo_ip_address:
+              description: >
+                The ip mongo is deployed on.
+              default: { get_attribute: [TARGET, host_ip] }
+
 
 
   ###########################################################

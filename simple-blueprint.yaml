@@ -46,6 +46,11 @@ node_templates:
 
       - type: node_connected_to_mongo
         target: mongod
+        target_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            postconfigure:
+              inputs:
+                mongo_ip_address: localhost
 
       ################################
       # Setting the nodejs connection
