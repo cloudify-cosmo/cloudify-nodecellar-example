@@ -57,7 +57,7 @@ PORT=$(ctx node properties port)
 MONGO_ROOT_PATH=$(ctx instance runtime_properties mongo_root_path)
 MONGO_BINARIES_PATH=$(ctx instance runtime_properties mongo_binaries_path)
 MONGO_DATA_PATH=$(ctx instance runtime_properties mongo_data_path)
-COMMAND="${MONGO_BINARIES_PATH}/bin/mongod --port ${PORT} --dbpath ${MONGO_DATA_PATH} --rest --journal --shardsvr"
+COMMAND="${MONGO_BINARIES_PATH}/bin/mongod --port ${PORT} --dbpath ${MONGO_DATA_PATH} --rest --journal --shardsvr --smallfiles"
 
 ctx logger info "${COMMAND}"
 nohup ${COMMAND} > /dev/null 2>&1 &
