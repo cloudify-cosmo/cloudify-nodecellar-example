@@ -135,8 +135,8 @@ relationships:
           inputs:
             mongo_ip_address:
               description: >
-                The ip mongo is deployed on.
-              default: { get_attribute: [TARGET, host_ip] }
+                The ip mongo is deployed on.  If empty will be resolved at runtime to mongo\'s host ip.
+              default: ''
 
 
 
