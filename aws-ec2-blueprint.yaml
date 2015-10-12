@@ -3,7 +3,7 @@
 # on an amazon ec2 cloud environment.
 ###########################################################
 
-tosca_definitions_version: cloudify_dsl_1_1
+tosca_definitions_version: cloudify_dsl_1_2
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3m6/types.yaml
@@ -87,7 +87,7 @@ node_templates:
 
       - type: cloudify.aws.relationships.instance_connected_to_elastic_ip
         target: nodecellar_ip
- 
+
       ###########################################################
       # Attaching the nodecellar security group to the nodejs host
       ###########################################################
