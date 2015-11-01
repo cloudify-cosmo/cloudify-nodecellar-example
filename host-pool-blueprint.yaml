@@ -7,8 +7,8 @@
 tosca_definitions_version: cloudify_dsl_1_2
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3m7/types.yaml
-  - http://www.getcloudify.org/spec/host-pool-plugin/1.3m7/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3rc1/types.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.3rc1/plugin.yaml
   - types/nodecellar.yaml
   - types/host-pool-types.yaml
 
