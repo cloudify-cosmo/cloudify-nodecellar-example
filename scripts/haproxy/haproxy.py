@@ -112,7 +112,7 @@ def _run(command, error_message):
     try:
         runner.run(command)
     except exceptions.CommandExecutionException as e:
-        raise NonRecoverableError('{0}: {1}'.format(error_message, e))
+        raise exceptions.NonRecoverableError('{0}: {1}'.format(error_message, e))
 
 
 def _main():
