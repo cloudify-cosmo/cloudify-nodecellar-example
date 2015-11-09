@@ -94,4 +94,4 @@ outputs:
 
 
 description: >
-  deployes nodecellar app alongside mongo on a single machine
+  deploys nodecellar app alongside mongo on a single machine
