@@ -92,3 +92,6 @@ outputs:
       ip_address: { get_property: [ host, ip ] }
       port: { get_property: [ nodecellar, port ] }
 
+
+description: >
+  deployes nodecellar app alongside mongo on a single machine
