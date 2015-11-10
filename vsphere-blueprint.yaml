@@ -1,5 +1,9 @@
 tosca_definitions_version: cloudify_dsl_1_2
 
+description: >
+  This Blueprint installs the nodecellar application
+  on an vsphere environment.
+
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3rc1/types.yaml
   - http://www.getcloudify.org/spec/vsphere-plugin/1.3rc1/plugin.yaml

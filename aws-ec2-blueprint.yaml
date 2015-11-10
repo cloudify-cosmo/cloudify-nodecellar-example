@@ -1,9 +1,8 @@
-###########################################################
-# This Blueprint installs the nodecellar application
-# on an amazon ec2 cloud environment.
-###########################################################
-
 tosca_definitions_version: cloudify_dsl_1_2
+
+description: >
+  This Blueprint installs the nodecellar application
+  on an amazon ec2 cloud environment.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.3rc1/types.yaml
