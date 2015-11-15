@@ -6,8 +6,8 @@ description: >
   cloudify-host-pool-plugin.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.3rc1/types.yaml
-  - http://www.getcloudify.org/spec/host-pool-plugin/1.3rc1/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3/types.yaml
+  - http://www.getcloudify.org/spec/host-pool-plugin/1.3/plugin.yaml
   - types/nodecellar.yaml
   - types/host-pool-types.yaml
 
