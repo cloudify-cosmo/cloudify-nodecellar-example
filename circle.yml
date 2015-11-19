@@ -1,0 +1,36 @@
+machine:
+  python:
+    version: 2.7.9
+
+dependencies:
+  override:
+    - pip install https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.3.zip
+    - pip install https://github.com/cloudify-cosmo/cloudify-dsl-parser/archive/3.3.zip
+    - pip install https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.3.zip
+    - pip install https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.3.zip
+    - pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/3.3.zip
+    - pip install https://github.com/cloudify-cosmo/tosca-vcloud-plugin/archive/1.3rc1.zip
+
+
+test:
+  override:
+    - cfy init
+    - cfy blueprints validate -p aws-ec2-blueprint.yaml
+    - cfy blueprints validate -p cloudstack-blueprint.yaml
+    - cfy blueprints validate -p host-pool-blueprint.yaml
+    - cfy blueprints validate -p local-blueprint.yaml
+    - cfy blueprints validate -p openstack-blueprint.yaml
+    - cfy blueprints validate -p openstack-haproxy-blueprint.yaml
+    - cfy blueprints validate -p openstack-nova-net-blueprint.yaml
+    - cfy blueprints validate -p simple-blueprint.yaml
+    - cfy blueprints validate -p softlayer-blueprint.yaml
+    - cfy blueprints validate -p vcloud-blueprint.yaml
+    - cfy blueprints validate -p vsphere-blueprint.yaml
+    - cfy local init -p local-blueprint.yaml
+    - cfy local execute -w install
+    - cfy local execute -w uninstall
+
+
+# notify:
+#   flowdock: 1f4ec6febcf1ac9b35ae6c1f0049471f
+
