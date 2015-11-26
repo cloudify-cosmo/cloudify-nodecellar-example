@@ -205,5 +205,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      public_ip: { get_attribute: [ nodecellar_ip, public_ip ] }
+      ip_address: { get_attribute: [ nodecellar_ip, public_ip ] }
       port: { get_property: [ nodecellar, port ] }
