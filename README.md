@@ -1,5 +1,7 @@
 # Cloudify Nodecellar Example
 
+* Master [![Circle CI](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master.svg?&style=shield)](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master)
+
 ![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--aws--ec2-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--openstack-tested-green.svg)
