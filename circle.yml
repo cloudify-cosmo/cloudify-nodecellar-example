@@ -38,3 +38,10 @@ test:
     - cfy local init -p local-blueprint.yaml
     - cfy local execute -w install
     - cfy local execute -w uninstall
+
+deployment:
+  release:
+    tag: /[0-9]+(\.[0-9]+)*/
+    owner: circleci
+    commands:
+      - "true" 
