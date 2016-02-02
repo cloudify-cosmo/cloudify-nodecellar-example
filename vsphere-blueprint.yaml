@@ -71,9 +71,21 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      server:
+        name: mongod-host
+        template: { get_input: template_name }
+        cpus: 1
+        memory: 2048
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      server:
+        name: nodejs-host
+        template: { get_input: template_name }
+        cpus: 1
+        memory: 2048
 
 outputs:
 

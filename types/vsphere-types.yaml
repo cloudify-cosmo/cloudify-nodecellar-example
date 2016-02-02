@@ -12,11 +12,6 @@ node_types:
       cloudify_agent:
           default:
             user: { get_input: agent_user }
-      server:
-        default:
-          template: { get_input: template_name }
-          cpus: 1
-          memory: 2048
       networking:
         default:
           connect_networks:
