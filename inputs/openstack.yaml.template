@@ -1,3 +1,3 @@
-image: ''
-flavor: ''
-agent_user: ''
+image: '74ff4015-aee1-4e02-aaa8-1c77b2650394'    # CentOS 7.0
+flavor: '196235bc-7ca5-4085-ac81-7e0242bda3f9'   # 1.2x4.40
+agent_user: 'centos'
