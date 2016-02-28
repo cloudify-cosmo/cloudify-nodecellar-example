@@ -58,6 +58,16 @@ inputs:
       Name of the existing network that's being used for Cloudify management
     type: string
 
+  diamond_reporting_interval:
+    description: interval in seconds for reporting metrics by diamond agent
+    type: integer
+    default: 10
+# This default is here for UX and demos, we strongly recommend you reconsider
+# how much data you report for your own production system based on your
+# specific application, as this generates approximately 12kb of data per report,
+# so for example a setting of 10 would generate approximately 726mb per week,
+# which might be an issue if you install your manager on a small partition.
+
 node_templates:
 
   nodecellar:
