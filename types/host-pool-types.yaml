@@ -2,7 +2,12 @@
 node_types:
 
   nodecellar.nodes.Host:
-    derived_from: cloudify.hostpool.nodes.Host
+    derived_from: cloudify.hostpool.nodes.LinuxHost
+    properties:
+      filters:
+        default:
+          tags:
+            - 'ubuntu'
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
