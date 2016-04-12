@@ -42,10 +42,15 @@ inputs:
   vm_memory:
     description: Amount of memory to be used by the virtual machine
 
-  ip:
+  mongod_ip:
     description: >
-      The IPv4 address which the virtual machine will be configured with.
-      Provide a CIDR to automatically generate an IP by the CIDR.
+      The IPv4 address which the mongod virtual machine will be configured
+      with.Provide a CIDR to automatically generate an IP by the CIDR.
+
+  nodejs_ip:
+    description: >
+      The IPv4 address which the mongod virtual machine will be configured
+      with.Provide a CIDR to automatically generate an IP by the CIDR.
 
   additional_vagrant_settings:
     description: >
@@ -69,10 +74,8 @@ node_templates:
   mongod_vm:
     type: cloudify.nodes.Compute
     properties:
-      ip: { get_input: ip }
+      ip: { get_input: mongod_ip }
       install_agent: false
-    instances:
-      deploy: 2
     interfaces:
         cloudify.interfaces.lifecycle:
             start:
@@ -89,7 +92,7 @@ node_templates:
   nodejs_vm:
     type: cloudify.nodes.Compute
     properties:
-      ip: {}
+      ip: { get_input: nodejs_ip }
       install_agent: false
     interfaces:
         cloudify.interfaces.lifecycle:
