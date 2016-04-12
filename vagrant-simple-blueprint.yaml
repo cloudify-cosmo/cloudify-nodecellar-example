@@ -1,0 +1,92 @@
+tosca_definitions_version: cloudify_dsl_1_2
+
+description: >
+  This Blueprint installs the nodecellar application
+  on an existing host.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.4m4/types.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.2/plugin.yaml
+  - types/nodecellar.yaml
+  - types/simple-types.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
+inputs:
+
+  host_ip:
+      description: >
+        The ip of the host the application will be deployed on
+
+  agent_user:
+      description: >
+        User name used when SSH-ing into the started machine
+
+  agent_private_key_path:
+      description: >
+        Path to a private key that resided on the management machine.
+        SSH-ing into agent machines will be done with this key.
+
+node_templates:
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+        target_interfaces:
+          cloudify.interfaces.relationship_lifecycle:
+            postconfigure:
+              inputs:
+                mongo_ip_address: localhost
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+
+  host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      ip: { get_input: host_ip }
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_property: [ host, ip ] }
+      port: { get_property: [ nodecellar, port ] }
