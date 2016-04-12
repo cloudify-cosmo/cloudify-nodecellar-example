@@ -49,7 +49,7 @@ inputs:
 
 node_templates:
 
-  mogod_vm:
+  mongod_vm:
       type: cloudify.nodes.Root
       interfaces:
           cloudify.interfaces.lifecycle:
@@ -97,7 +97,7 @@ node_templates:
           cloudify.interfaces.relationship_lifecycle:
             postconfigure:
               inputs:
-                mongo_ip_address: { get_attribute: [mogod_vm, ip_address]}
+                mongo_ip_address: { get_attribute: [mongod_vm, ip_address]}
 
       ################################
       # Setting the nodejs connection
