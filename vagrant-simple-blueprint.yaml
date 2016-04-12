@@ -42,33 +42,36 @@ inputs:
   vm_memory:
     description: Amount of memory to be used by the virtual machine
 
-  vm_ip_address:
+  ip:
     description: >
       The IPv4 address which the virtual machine will be configured with.
       Provide a CIDR to automatically generate an IP by the CIDR.
 
+  additional_vagrant_settings:
+    description: >
+      Accepts a dictionary with vagrant config parameters. The key and
+      values will be printed into the Vagrant file as "key= value", at the
+      vagrant machine configuration part.
+      Note: Make sure you use 'config.' as the prefix of the configuration key.
+  additional_virtualbox_settings:
+    description: >
+          Accepts a dictionary with vagrant config parameters. The key and
+          values will be printed into the Vagrant file as "key= value", at
+          the virtualbox machine configuration part.
+          Note: Make sure you use 'vbox.' as the prefix of the configuration
+          key.
+  provision_sets:
+    description:
+    # TODO add description
+
 node_templates:
 
   mongod_vm:
-      type: cloudify.nodes.Root
-      interfaces:
-          cloudify.interfaces.lifecycle:
-              start:
-                  implementation: vagrant.vagrant_plugin.vbox.tasks.start
-                  inputs:
-                    vbox: { get_input: vbox }
-                    vm_name_prefix: { get_input: vm_name_prefix }
-                    vm_cpus: { get_input: vm_cpus }
-                    vm_memory: { get_input: vm_memory }
-                    vm_ip_address: { get_input: vm_ip_address }
-                    additional_vagrant_settings: {}
-                    additional_virtualbox_settings: {}
-                    provision_sets: { get_input: provision_sets }
-
-
-
-  nodejs_vm:
-    type: cloudify.nodes.Root
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: ip }
+    instances:
+      deploy: 2
     interfaces:
         cloudify.interfaces.lifecycle:
             start:
@@ -78,11 +81,26 @@ node_templates:
                   vm_name_prefix: { get_input: vm_name_prefix }
                   vm_cpus: { get_input: vm_cpus }
                   vm_memory: { get_input: vm_memory }
-                  vm_ip_address: {}
+                  additional_vagrant_settings: {}
+                  additional_virtualbox_settings: {}
+                  provision_sets: { get_input: provision_sets }
+
+  nodejs_vm:
+    type: cloudify.nodes.Compute
+    properties:
+          ip: {}
+    interfaces:
+        cloudify.interfaces.lifecycle:
+            start:
+                implementation: vagrant.vagrant_plugin.vbox.tasks.start
+                inputs:
+                  vbox: { get_input: vbox }
+                  vm_name_prefix: { get_input: vm_name_prefix }
+                  vm_cpus: { get_input: vm_cpus }
+                  vm_memory: { get_input: vm_memory }
                   additional_vagrant_settings: {}
                   additional_virtualbox_settings: {}
                   provision_sets: {}
-
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
     relationships:
