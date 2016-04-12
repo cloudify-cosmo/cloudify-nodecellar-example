@@ -9,6 +9,7 @@ imports:
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.2/plugin.yaml
   - types/nodecellar.yaml
   - types/simple-types.yaml
+  - /home/david/cloudify-vagrant-plugin/plugin.yaml
 
 #####################################################################################
 # inputs section allows the user to use same
@@ -20,10 +21,6 @@ imports:
 
 inputs:
 
-  host_ip:
-      description: >
-        The ip of the host the application will be deployed on
-
   agent_user:
       description: >
         User name used when SSH-ing into the started machine
@@ -33,7 +30,58 @@ inputs:
         Path to a private key that resided on the management machine.
         SSH-ing into agent machines will be done with this key.
 
+  vbox:
+    description: VBox box URL or shortened name
+
+  vm_name_prefix:
+    description: Virtual machine's display name
+
+  vm_cpus:
+    description: Amount of CPUs to be used by the virtual machine
+
+  vm_memory:
+    description: Amount of memory to be used by the virtual machine
+
+  vm_ip_address:
+    description: >
+      The IPv4 address which the virtual machine will be configured with.
+      Provide a CIDR to automatically generate an IP by the CIDR.
+
 node_templates:
+
+  mogod_vm:
+      type: cloudify.nodes.Root
+      interfaces:
+          cloudify.interfaces.lifecycle:
+              start:
+                  implementation: vagrant.vagrant_plugin.vbox.tasks.start
+                  inputs:
+                    vbox: { get_input: vbox }
+                    vm_name_prefix: { get_input: vm_name_prefix }
+                    vm_cpus: { get_input: vm_cpus }
+                    vm_memory: { get_input: vm_memory }
+                    vm_ip_address: { get_input: vm_ip_address }
+                    additional_vagrant_settings: {}
+                    additional_virtualbox_settings: {}
+                    provision_sets: { get_input: provision_sets }
+
+
+
+  nodejs_vm:
+    type: cloudify.nodes.Root
+    interfaces:
+        cloudify.interfaces.lifecycle:
+            start:
+                implementation: vagrant.vagrant_plugin.vbox.tasks.start
+                inputs:
+                  vbox: { get_input: vbox }
+                  vm_name_prefix: { get_input: vm_name_prefix }
+                  vm_cpus: { get_input: vm_cpus }
+                  vm_memory: { get_input: vm_memory }
+                  vm_ip_address: {}
+                  additional_vagrant_settings: {}
+                  additional_virtualbox_settings: {}
+                  provision_sets: {}
 
   nodecellar:
     type: nodecellar.nodes.NodecellarApplicationModule
@@ -49,7 +97,7 @@ node_templates:
           cloudify.interfaces.relationship_lifecycle:
             postconfigure:
               inputs:
-                mongo_ip_address: localhost
+                mongo_ip_address: { get_attribute: [mogod_vm, ip_address]}
 
       ################################
       # Setting the nodejs connection
@@ -62,21 +110,13 @@ node_templates:
     type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
+        target: mongod_vm
 
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
       - type: cloudify.relationships.contained_in
-        target: host
-
-  host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      ip: { get_input: host_ip }
-      cloudify_agent:
-        user: { get_input: agent_user }
-        key: { get_input: agent_private_key_path }
+        target: nodejs_vm
 
 ###########################################################
 # This outputs section exposes the application endpoint.
@@ -88,5 +128,5 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ host, ip ] }
+      ip_address: { get_attribute: [ nodejs_vm, ip_address ] }
       port: { get_property: [ nodecellar, port ] }
