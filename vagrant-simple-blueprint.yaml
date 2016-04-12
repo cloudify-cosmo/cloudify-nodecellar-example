@@ -70,6 +70,7 @@ node_templates:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: ip }
+      install_agent: false
     instances:
       deploy: 2
     interfaces:
@@ -88,7 +89,8 @@ node_templates:
   nodejs_vm:
     type: cloudify.nodes.Compute
     properties:
-          ip: {}
+      ip: {}
+      install_agent: false
     interfaces:
         cloudify.interfaces.lifecycle:
             start:
