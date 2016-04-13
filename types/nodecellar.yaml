@@ -131,7 +131,7 @@ relationships:
     target_interfaces:
       cloudify.interfaces.relationship_lifecycle:
         postconfigure:
-          implementation: scripts/mongo/set-mongo-url-dynamic.sh
+          implementation: scripts/mongo/set-mongo-url.sh
           inputs:
             mongo_ip_address:
               description: >
