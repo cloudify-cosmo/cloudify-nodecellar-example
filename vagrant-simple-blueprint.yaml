@@ -75,7 +75,9 @@ node_templates:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: mongod_ip }
-      install_agent: false
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
     interfaces:
         cloudify.interfaces.lifecycle:
             start:
@@ -93,7 +95,9 @@ node_templates:
     type: cloudify.nodes.Compute
     properties:
       ip: { get_input: nodejs_ip }
-      install_agent: false
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
     interfaces:
         cloudify.interfaces.lifecycle:
             start:
@@ -114,7 +118,7 @@ node_templates:
       # Setting the mongo connection
       ################################
 
-      - type: node_connected_to_mongo
+      - type: node_connected_to_mongo_vm
         target: mongod
         target_interfaces:
           cloudify.interfaces.relationship_lifecycle:
@@ -153,3 +157,17 @@ outputs:
     value:
       ip_address: { get_attribute: [ nodejs_vm, ip_address ] }
       port: { get_property: [ nodecellar, port ] }
+
+
+relationships:
+  node_connected_to_mongo_vm:
+    derived_from: cloudify.relationships.connected_to
+    target_interfaces:
+      cloudify.interfaces.relationship_lifecycle:
+        postconfigure:
+          implementation: scripts/mongo/set-mongo-url-dynamic.sh
+          inputs:
+            mongo_ip_address:
+              description: >
+                The ip mongo is deployed on.  If empty will be resolved at runtime to mongo\'s host ip.
+              default: ''
