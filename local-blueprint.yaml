@@ -5,7 +5,7 @@ description: >
   on a local machine.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.4m4/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
   - types/nodecellar.yaml
 
 inputs:
