@@ -67,9 +67,6 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
-    properties:
-      parameters:
-        subnet_id: subnet-580b5e65
     relationships:
 
       ###########################################################
@@ -81,9 +78,6 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-    properties:
-      parameters:
-        subnet_id: subnet-580b5e65
     relationships:
 
       ###########################################################
