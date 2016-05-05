@@ -5,8 +5,8 @@ description: >
   on an amazon ec2 cloud environment.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.4m4/types.yaml
-  - http://www.getcloudify.org/spec/aws-plugin/1.4/plugin.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.3.1/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-aws-plugin/master/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.2/plugin.yaml
   - types/nodecellar.yaml
   - types/aws-ec2-types.yaml
@@ -67,6 +67,9 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      parameters:
+        subnet_id: subnet-580b5e65
     relationships:
 
       ###########################################################
@@ -78,6 +81,9 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
+    properties:
+      parameters:
+        subnet_id: subnet-580b5e65
     relationships:
 
       ###########################################################
