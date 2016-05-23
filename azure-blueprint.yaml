@@ -6,7 +6,7 @@ description: >
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-azure-plugin/CFY-5203-v1.4/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-azure-plugin/master/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.2/plugin.yaml
   - types/nodecellar.yaml
 
