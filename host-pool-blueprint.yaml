@@ -1,9 +1,9 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on hosts from an existing host-pool using the
-  cloudify-host-pool-plugin.
+  This blueprint installs the Node Cellar application
+  on hosts from an existing host pool using the
+  Cloudify Host Pool plugin.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
@@ -12,18 +12,18 @@ imports:
   - types/host-pool-types.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
   host_pool_service_endpoint:
     description: >
-      URL to the host pool service that will allocate hosts.
+      URL of the Cloudify Host Pool service that allocates hosts
 
 node_templates:
 
@@ -32,30 +32,44 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
         target: nodejs
 
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
+
+      ################################
+      # Contained in nodejs host
+      ################################
+
       - type: cloudify.relationships.contained_in
         target: nodejs_host
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    relationships:
+
+      ################################
+      # Contained in mongod host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  ############
+  # Hosts
+  ############
 
   nodejs_host:
     type: nodecellar.nodes.Host
@@ -64,7 +78,8 @@ node_templates:
     type: nodecellar.nodes.Host
 
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
@@ -74,4 +89,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodejs_host, public_address ] }
-      port: { get_property: [nodecellar, port] }
+      port: { get_property: [ nodecellar, port ] }

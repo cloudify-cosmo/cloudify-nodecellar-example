@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on an openstack cloud environment.
+  This blueprint installs the Node Cellar application
+  on an OpenStack environment.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
@@ -12,26 +12,26 @@ imports:
   - types/openstack-types.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
   image:
     description: >
-      Image to be used when launching agent VM's
+      OpenStack image for provisioning VMs
 
   flavor:
     description: >
-      Flavor of the agent VM's
+      OpenStack flavor for provisioning VMs
 
   agent_user:
     description: >
-      User for connecting to agent VM's
+      Username for SSH connections to VMs from Cloudify Manager
 
 node_templates:
 
@@ -40,68 +40,91 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
         target: nodejs
 
-  mongod:
-    type: nodecellar.nodes.MonitoredMongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
+
+      ################################
+      # Contained in nodejs host
+      ################################
+
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
     relationships:
 
-      ###########################################################
-      # Attaching the mongo security group to the mongo host
-      ###########################################################
+      ################################
+      # Contained in mongod host
+      ################################
 
-      - target: mongod_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  ############
+  # Hosts
+  ############
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
 
       ###########################################################
-      # Attaching an ip to the nodejs host
+      # Attach our public IP address to nodejs host
       ###########################################################
 
       - target: nodecellar_ip
         type: cloudify.openstack.server_connected_to_floating_ip
 
       ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
+      # Put nodejs host in nodecellar security group
       ###########################################################
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
 
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    relationships:
+
+      ###########################################################
+      # Put mongod host in mongod security group
+      ###########################################################
+
+      - target: mongod_security_group
+        type: cloudify.openstack.server_connected_to_security_group
+
   ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
+  # Security group to open up the Node.js HTTP port to
+  # world access.
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
+  # Security group to open up the MongoDB ports to the
+  # application hosts.
   ###########################################################
 
   mongod_security_group:
@@ -116,33 +139,15 @@ node_templates:
           port: 28017
 
   ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodejs node.
-  #
-  # We need this so that the nodecellar application can
-  # receive web traffic.
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
-  ###########################################################
-  # An ip to be attached to the nodejs host, since
-  # eventually we want to be able to access it
-  # from any machine, on any network.
+  # Our public IP address for world access.
   ###########################################################
 
   nodecellar_ip:
     type: cloudify.openstack.nodes.FloatingIP
 
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################

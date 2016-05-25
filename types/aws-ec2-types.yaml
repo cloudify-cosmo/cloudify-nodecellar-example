@@ -1,8 +1,8 @@
 node_types:
 
   ###########################################################
-  # We define a type that inherits ec2's default
-  # server, and adds monitoring capabillities on top of it.
+  # We define a type that inherits EC2's default
+  # server, and adds monitoring capabilities on top of it.
   ###########################################################
 
   nodecellar.nodes.MonitoredServer:
@@ -18,7 +18,7 @@ node_types:
     interfaces:
 
       ###########################################################
-      # We are infact telling cloudify to install a diamond
+      # We are telling Cloudify to install a Diamond
       # monitoring agent on the server.
       #
       # (see https://github.com/BrightcoveOS/Diamond)

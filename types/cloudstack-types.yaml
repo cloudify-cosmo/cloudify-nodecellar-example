@@ -1,9 +1,9 @@
 node_types:
 
   ###########################################################
-  # We define a type that inherits cloudstack's default
+  # We define a type that inherits CloudStack's default
   # virtual machine, and adds monitoring
-  # capabillities on top of it.
+  # capabilities on top of it.
   #
   # Two things to note here:
   #
@@ -11,7 +11,7 @@ node_types:
   #    as the default value for the management network name.
   #
   #    This will be used for letting the management machine
-  #    know which ip it should connect to when installing
+  #    know which IP it should connect to when installing
   #    agents.
   #
   #  - We use our 'nodecellar_network_resource_id' input
@@ -25,8 +25,8 @@ node_types:
       management_network_name:
 
         #####################################################
-        # This is needed for identification of which nic
-        # to look for when obtaining the VM ip address
+        # This is needed for identification of which NIC
+        # to look for when obtaining the VM IP address
         #####################################################
 
         default: { get_input: management_network_resource_id }
@@ -45,7 +45,7 @@ node_types:
     interfaces:
 
       ###########################################################
-      # We are infact telling cloudify to install a diamond
+      # We are telling Cloudify to install a Diamond
       # monitoring agent on the server.
       #
       # (see https://github.com/BrightcoveOS/Diamond)

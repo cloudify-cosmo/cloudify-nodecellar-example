@@ -1,12 +1,20 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on a local machine.
+  This blueprint installs the Node Cellar application
+  on the local host.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
   - types/nodecellar.yaml
+
+#####################################################################################
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
+#####################################################################################
 
 inputs:
 
@@ -20,30 +28,44 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
         target: nodejs
 
-  mongod:
-    type: nodecellar.nodes.MongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
-
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
+
+      ################################
+      # Contained in the local host
+      ################################
+
       - type: cloudify.relationships.contained_in
         target: host
+
+  mongod:
+    type: nodecellar.nodes.MongoDatabase
+    relationships:
+
+      ################################
+      # Contained in the local host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: host
+
+  ############
+  # Host
+  ############
 
   host:
     type: cloudify.nodes.Compute
@@ -52,7 +74,8 @@ node_templates:
       install_agent: false
 
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
@@ -62,4 +85,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: localhost
-      port: { get_property: [nodecellar, port] }
+      port: { get_property: [ nodecellar, port ] }
