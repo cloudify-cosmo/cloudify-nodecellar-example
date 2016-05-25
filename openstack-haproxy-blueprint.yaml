@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application behind
-  an haproxy instance on an openstack cloud environment.
+  This blueprint installs the Node Cellar application behind
+  an HAProxy instance on an OpenStack environment.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
@@ -13,89 +13,113 @@ imports:
   - types/haproxy/haproxy.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
   image:
     description: >
-      Image to be used when launching agent VM's
+      OpenStack image for provisioning VMs
 
   flavor:
     description: >
-      Flavor of the agent VM's
+      OpenStack flavor for provisioning VMs
 
   agent_user:
     description: >
-      User for connecting to agent VM's
+      Username for SSH connections to VMs from Cloudify Manager
 
 node_templates:
-
-  nodecellar:
-    type: nodecellar.nodes.NodecellarApplicationModule
-    relationships:
-
-      ################################
-      # Setting the mongo connection
-      ################################
-
-      - type: node_connected_to_mongo
-        target: mongod
-
-      ################################
-      # Setting the nodejs connection
-      ################################
-
-      - type: node_contained_in_nodejs
-        target: nodejs
-
-      ################################
-      # Setting the haproxy connection
-      ################################
-
-      - type: app_connected_to_haproxy
-        target: haproxy
-
-  mongod:
-    type: nodecellar.nodes.MonitoredMongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
-  nodejs:
-    type: nodecellar.nodes.NodeJSServer
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: nodejs_host
-
-  ########################################
-  # Note: only ubuntu haproxy installation
-  # is supported.
-  ########################################
 
   haproxy:
     type: nodecellar.nodes.MonitoredHAProxy
     properties:
       backend_app_port: { get_property: [ nodecellar, port ] }
     relationships:
+
+      ########################################
+      # Contained in haproxy frontend host
+      #
+      # Note: HAProxy installation scripts
+      # only support Ubuntu hosts
+      ########################################
+
       - target: haproxy_frontend_host
         type: cloudify.relationships.contained_in
 
-  mongod_host:
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    relationships:
+
+      ################################
+      # Connected to mongod node
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Contained in nodejs node
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+      ################################
+      # Connected to haproxy node
+      ################################
+
+      - type: app_connected_to_haproxy
+        target: haproxy
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+
+      ################################
+      # Contained in nodejs host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+
+      ################################
+      # Contained in mongod host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  ############
+  # Hosts
+  ############
+
+  haproxy_frontend_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
 
       ###########################################################
-      # Attaching the mongo security group to the mongo host
+      # Attach our public IP address to haproxy frontend host
       ###########################################################
 
-      - target: mongod_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: nodecellar_ip
+
+      ###################################################################
+      # Put haproxy frontend host in haproxy frontend security group
+      ###################################################################
+
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: haproxy_frontend_security_group
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
@@ -111,39 +135,56 @@ node_templates:
     relationships:
 
       ###########################################################
-      # Attaching the nodecellar security group to
-      # the nodecellar host
+      # Attach nodejs host to nodecellar security group
       ###########################################################
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
 
-  haproxy_frontend_host:
+  mongod_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
 
       ###########################################################
-      # Attaching an ip to the haproxy frontend host
+      # Put mongod host in mongod security group
       ###########################################################
 
-      - type: cloudify.openstack.server_connected_to_floating_ip
-        target: nodecellar_ip
-
-      ###########################################################
-      # Attaching the haproxy frontend security group to
-      # the haproxy frontend host
-      ###########################################################
-
-      - type: cloudify.openstack.server_connected_to_security_group
-        target: haproxy_frontend_security_group
+      - target: mongod_security_group
+        type: cloudify.openstack.server_connected_to_security_group
 
   ###########################################################
-  # A security group to enable access to the mongo host
-  # using the port of the mongo node.
-  #
-  # We need this so that the nodecellar application can
-  # comminicate with MongoDB, since they are running on
-  # different hosts.
+  # Security group to open up the HAProxy HTTP port and
+  # statistics port to world access.
+  ###########################################################
+
+  haproxy_frontend_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: haproxy_frontend_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, frontend_port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ haproxy, statistics_port ] }
+
+  ###########################################################
+  # Security group to open up the Node.js HTTP port to
+  # HAProxy hosts.
+  ###########################################################
+
+  nodecellar_security_group:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      security_group:
+        name: nodecellar_security_group
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: { get_property: [ nodecellar, port ] }
+
+  ###########################################################
+  # Security group to open up the MongoDB ports to the
+  # application hosts.
   ###########################################################
 
   mongod_security_group:
@@ -158,52 +199,15 @@ node_templates:
           port: 28017
 
   ###########################################################
-  # A security group to enable access to the nodejs host
-  # using the port of the nodecellar application.
-  #
-  # This security group will be attached to the nodejs_host
-  ###########################################################
-
-  nodecellar_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: nodecellar_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ nodecellar, port ] }
-
-  ###########################################################
-  # A security group to enable access to the haproxy frontend
-  # host using the haproxy frontend_port property.
-  # In addition, we open the statistics port (9000) of haproxy
-  #
-  # This security group will be attached to the
-  # haproxy_frontend_host
-  ###########################################################
-
-  haproxy_frontend_security_group:
-    type: cloudify.openstack.nodes.SecurityGroup
-    properties:
-      security_group:
-        name: haproxy_frontend_security_group
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, frontend_port ] }
-        - remote_ip_prefix: 0.0.0.0/0
-          port: { get_property: [ haproxy, statistics_port ]}
-
-  ###########################################################
-  # An ip to be attached to the haproxy frontend host, since
-  # eventually we want to be able to access it
-  # from any machine, on any network.
+  # Our public IP address for world access.
   ###########################################################
 
   nodecellar_ip:
     type: cloudify.openstack.nodes.FloatingIP
 
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
@@ -213,4 +217,4 @@ outputs:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
-      port: { get_property: [haproxy, frontend_port] }
+      port: { get_property: [ haproxy, frontend_port] }

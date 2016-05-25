@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on an vcloud environment.
+  This blueprint installs the Node Cellar application
+  on a VMWare vCloud environment.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
@@ -12,21 +12,23 @@ imports:
   - types/vcloud-types.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
   template:
     type: string
+    description: >
+      vCloud template for provisioning servers
 
   agent_user:
     description: >
-      User for connecting to agent VM's
+      Username for SSH connections to servers from Cloudify Manager
     type: string
     default: ubuntu
 
@@ -39,12 +41,12 @@ inputs:
   server_cpu:
     default: 2
     description: >
-      cpu count for each server
+      CPU count for provisioning servers
 
   server_memory:
     default: 4096
     description: >
-      memory amount for each server
+      Memory in MB for provisioning servers
 
   edge_gateway:
     type: string
@@ -55,7 +57,7 @@ inputs:
 
   management_network_name:
     description: >
-      Name of the existing network that's being used for Cloudify management
+      Name of the existing network with access to Cloudify Manager
     type: string
 
 node_templates:
@@ -67,14 +69,14 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
@@ -83,6 +85,11 @@ node_templates:
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
+
+      ################################
+      # Contained in nodejs host
+      ################################
+
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
@@ -90,12 +97,21 @@ node_templates:
     type: nodecellar.nodes.MongoDatabase
     properties:
       port: 27017
+    relationships:
+
+      ################################
+      # Contained in mongod host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
     interfaces:
       cloudify.interfaces.lifecycle:
 
         ###########################################################
         # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
+        # PyMongo. We install this library in the 'configure'
         # lifecycle hook of this node.
         ###########################################################
 
@@ -114,39 +130,58 @@ node_templates:
                 MongoDBCollector:
                   config:
                     hosts: "localhost:27017"
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
+
+  ############
+  # Hosts
+  ############
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
 
       ###########################################################
-      # Attaching a floating ip to the nodejs host
+      # Attach our public IP address to nodejs host
       ###########################################################
 
       - target: nodecellar_ip
         type: cloudify.vcloud.server_connected_to_floating_ip
+
+      ###########################################################
+      # Use key pair for SSH connections
+      ###########################################################
+
       - target: ssh_keypair
         type: cloudify.vcloud.server_connected_to_keypair
+
+      ###########################################################
+      # Put nodejs host in nodejs security group
+      ###########################################################
+
       - target: nodejs_security_group
         type: cloudify.vcloud.server_connected_to_security_group
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
     relationships:
-      - target: ssh_keypair
-        type: cloudify.vcloud.server_connected_to_keypair
+
+      ###########################################################
+      # Put mongod host in mongod security group
+      ###########################################################
+
       - target: mongod_security_group
         type: cloudify.vcloud.server_connected_to_security_group
 
-  ssh_keypair:
-    type: cloudify.vcloud.nodes.KeyPair
-    properties:
-      public_key:
-        user: { get_input: agent_user }
-        key:  { get_input: agent_public_key }
+      ###########################################################
+      # Use key pair for SSH connections
+      ###########################################################
+
+      - target: ssh_keypair
+        type: cloudify.vcloud.server_connected_to_keypair
+
+  ###########################################################
+  # Security group to open up the Node.js HTTP port to
+  # world access. Also opens up backward access.
+  ###########################################################
 
   nodejs_security_group:
       type: cloudify.vcloud.nodes.SecurityGroup
@@ -160,14 +195,19 @@ node_templates:
                 destination_port: 8080
                 action: allow
                 description: >
-                      http to nodejs node
+                      Open HTTP port
                 protocol: TCP
               - source: host
                 destination: any
                 action: allow
                 description: >
-                       backward network connection for nodejs updates
+                       Backward network connection
                 protocol: any
+
+  ###########################################################
+  # Security group to open up the MongoDB ports to the
+  # application hosts. Also opens up backward access.
+  ###########################################################
 
   mongod_security_group:
       type: cloudify.vcloud.nodes.SecurityGroup
@@ -180,13 +220,11 @@ node_templates:
                 destination: any
                 action: allow
                 description: >
-                       backward network connection for mongod updates
+                       Backward network connection
                 protocol: any
 
   ###########################################################
-  # A floating ip to be attached to the nodejs host, since
-  # eventually we want to be able to access it
-  # from any machine, on any network.
+  # Our public IP address for world access.
   ###########################################################
 
   nodecellar_ip:
@@ -195,8 +233,20 @@ node_templates:
       floatingip:
         edge_gateway: { get_input: edge_gateway }
 
+  ###########################################################
+  # Key pair for SSH connections
+  ###########################################################
+
+  ssh_keypair:
+    type: cloudify.vcloud.nodes.KeyPair
+    properties:
+      public_key:
+        user: { get_input: agent_user }
+        key:  { get_input: agent_public_key }
+
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################

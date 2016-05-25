@@ -1,17 +1,19 @@
 ################################################################
 # Blueprint node types.
 #
-# specific new types for the nodecellar app.
-# these types are mapped to scripts that are resposible
+# Specific new types for the Node Cellar application.
+#
+# These types are mapped to scripts that are responsible
 # for the lifecycle operation.
 ################################################################
 
 node_types:
 
   ###########################################################
-  # Mongo Database.
+  # MongoDB.
   #
-  # Used the data backend for the nodecellar application.
+  # Used as the data backend for the Node Cellar application.
+  #
   # configurable properties:
   #   - port
   ###########################################################
@@ -38,7 +40,7 @@ node_types:
 
         ###########################################################
         # The MongoDBCollector depends on a python library called
-        # pymongo. We install this library in the 'configure'
+        # PyMongo. We install this library in the 'configure'
         # lifecycle hook of this node.
         ###########################################################
 
@@ -46,7 +48,7 @@ node_types:
         stop: scripts/mongo/stop-mongo.sh
 
       ###########################################################
-      # Notice that this node defines an additional collector
+      # Note that this node defines an additional collector
       # to collect data on the MongoDB.
       ###########################################################
 
@@ -58,12 +60,12 @@ node_types:
                 default:
                   MongoDBCollector:
                     config:
-                      hosts: { concat: ['localhost:', { get_property: [ SELF, port ] } ] }
+                      hosts: { concat: [ 'localhost:', { get_property: [ SELF, port ] } ] }
 
   ###########################################################
-  # NodeJS Server.
+  # Node.js server.
   #
-  # Used to host the nodecellar application module.
+  # Used to host the Node Cellar application module.
   ###########################################################
 
   nodecellar.nodes.NodeJSServer:
@@ -74,9 +76,10 @@ node_types:
 
 
   ###########################################################
-  # Nodecellar application.
+  # Node Cellar application.
   #
-  # This is the actual application source files.
+  # These are the actual application source files.
+  #
   # configurable properties:
   #   - port
   #   - application url
@@ -97,9 +100,9 @@ node_types:
         default: https://github.com/cloudify-cosmo/nodecellar/archive/master.tar.gz
       startup_script:
         description: >
-          This script will be used to start the nodejs application.
+          This script will be used to start the Node.js application.
           The path is relative to the top level single directory inside
-          the archive
+          the archive.
         type: string
         default: server.js
     interfaces:
@@ -111,19 +114,20 @@ node_types:
 ################################################################
 # Blueprint relationships.
 #
-# specific new relationships for the nodecellar app.
-# these relationships are mapped to scripts that are resposible
+# Specific new relationships for the Node Cellar application.
+#
+# These relationships are mapped to scripts that are responsible
 # for the relationship operation.
 ################################################################
 
 relationships:
 
   ###########################################################
-  # This relationship is responsible for setting the mongo
-  # host ip on the source node as a runtime property.
+  # This relationship is responsible for setting the MongoDB
+  # host IP on the source node as a runtime property.
   #
-  # This will enable the source node to locate the mongo
-  # database.
+  # This will enable the source node to locate the MongoDB
+  # instance.
   ###########################################################
 
   node_connected_to_mongo:
@@ -135,16 +139,14 @@ relationships:
           inputs:
             mongo_ip_address:
               description: >
-                The ip mongo is deployed on.  If empty will be resolved at runtime to mongo\'s host ip.
+                The IP MongoDB is deployed on. If empty will be resolved at runtime to MongoDB\'s host IP.
               default: ''
 
-
-
   ###########################################################
-  # This relationship is responsible for setting the nodejs
+  # This relationship is responsible for setting the Node.js
   # location on the source node.
   #
-  # This will enable the source node to locate nodejs and
+  # This will enable the source node to locate Node.js and
   # use it to install depenencies with npm
   ###########################################################
 
