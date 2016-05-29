@@ -345,6 +345,17 @@ node_templates:
       retry_after: { get_input: retry_after }
       resource_config:
         securityRules:
+        - name: njssg_ssh
+          properties:
+            description: SSH access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: 22
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 102
+            access: Allow
+            direction: Inbound
         - name: njssg_http
           properties:
             description: HTTP access
@@ -354,6 +365,28 @@ node_templates:
             sourceAddressPrefix: '*'
             destinationAddressPrefix: '*'
             priority: 103
+            access: Allow
+            direction: Inbound
+        - name: njssg_mongoa
+          properties:
+            description: Mongo access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: { get_property: [ mongod, port ] }
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 104
+            access: Allow
+            direction: Inbound
+        - name: njssg_mongob
+          properties:
+            description: Mongo API access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: 28017
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 105
             access: Allow
             direction: Inbound
     relationships:
