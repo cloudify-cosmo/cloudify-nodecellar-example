@@ -12,8 +12,6 @@
 #   limitations under the License.
 ###############################################################################
 
-import os
-import subprocess
 import tempfile
 from contextlib import contextmanager
 
@@ -44,7 +42,8 @@ def configure(subject=None):
         frontend_id=subject.node.name,
         backends=subject.instance.runtime_properties.get('backends', {})))
 
-    ctx.logger.debug('Rendering the Jinja2 template to {0}.'.format(CONFIG_PATH))
+    ctx.logger.debug('Rendering the Jinja2 template to {0}.'.format(
+            CONFIG_PATH))
     ctx.logger.debug('The config dict: {0}.'.format(config))
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_config:
@@ -112,7 +111,8 @@ def _run(command, error_message):
     try:
         runner.run(command)
     except exceptions.CommandExecutionException as e:
-        raise exceptions.NonRecoverableError('{0}: {1}'.format(error_message, e))
+        raise exceptions.NonRecoverableError('{0}: {1}'.format(
+                error_message, e))
 
 
 def _main():
