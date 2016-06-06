@@ -1,0 +1,489 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  This Blueprint installs the nodecellar application
+  on an existing host.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.4m5/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-azure-plugin/master/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.2/plugin.yaml
+  - types/nodecellar.yaml
+
+#####################################################################################
+# inputs section allows the user to use same
+# blueprint for creating different deployments, each one
+# with its own parameters.
+# to specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#####################################################################################
+
+inputs:
+
+  resource_prefix:
+    default: cfy
+
+  resource_suffix:
+    default: 10
+
+  # Azure account information
+
+  subscription_id:
+    type: string
+    required: false
+
+  tenant_id:
+    type: string
+    required: false
+
+  client_id:
+    type: string
+    required: false
+
+  client_secret:
+    type: string
+    required: false
+
+  location:
+    type: string
+    required: true
+    default: eastus
+
+  retry_after:
+    type: integer
+    default: 60
+
+  # Existing manager resources
+  mgr_resource_group_name:
+    type: string
+    required: true
+
+  mgr_virtual_network_name:
+    type: string
+    required: true
+
+  mgr_subnet_name:
+    type: string
+    required: true
+
+  # Virtual Machine information
+
+  vm_size:
+    type: string
+    required: true
+    default: Standard_A2
+
+  vm_os_family:
+    type: string
+    required: true
+    default: linux
+
+  vm_image_publisher:
+    type: string
+    required: true
+    default: Canonical
+
+  vm_image_offer:
+    type: string
+    required: true
+    default: UbuntuServer
+
+  vm_image_sku:
+    type: string
+    required: true
+    default: 14.04.4-LTS
+
+  vm_image_version:
+    type: string
+    required: true
+    default: 14.04.201604060
+
+  vm_os_username:
+    description: >
+      Username to create as the VM's administrator user
+    type: string
+    required: true
+    default: cloudify
+
+  vm_os_password:
+    description: >
+      Password to use for the VM's administrator user
+    type: string
+    required: true
+    default: Cl0ud1fy!
+
+  vm_os_pubkeys:
+    description: the public key
+    default:
+    - path: {concat:[ '/home/', { get_input: vm_os_username }, '/.ssh/authorized_keys' ]}
+      keyData:
+        "ssh-rsa AAAAA3----your-key-here----aabbzz"
+
+  vm_os_pubkey_auth_only:
+    default: true
+
+  # Application information
+
+  webserver_port:
+    description: The external web server port
+    default: 8080
+
+
+dsl_definitions:
+  azure_config: &azure_config
+    subscription_id: { get_input: subscription_id }
+    tenant_id: { get_input: tenant_id }
+    client_id: { get_input: client_id }
+    client_secret: { get_input: client_secret }
+
+
+node_types:
+
+################################################################
+# Blueprint node types.
+#
+# specific new types for the nodecellar app.
+# these types are mapped to scripts that are resposible
+# for the lifecycle operation.
+################################################################
+
+  nodecellar.nodes.MonitoredServer:
+    derived_from: cloudify.azure.nodes.compute.VirtualMachine
+    properties:
+      name:
+        default: {concat:[{get_input: resource_prefix},vm,{get_input: resource_suffix}]}
+      location:
+        default: { get_input: location }
+      retry_after:
+        default: { get_input: retry_after }
+      os_family:
+        default: { get_input: vm_os_family }
+      azure_config:
+        default: *azure_config
+      resource_config:
+        default:
+          hardwareProfile:
+            vmSize: { get_input: vm_size }
+          storageProfile:
+            imageReference:
+              publisher: { get_input: vm_image_publisher }
+              offer: { get_input: vm_image_offer }
+              sku: { get_input: vm_image_sku }
+              version: { get_input: vm_image_version }
+          osProfile:
+            computerName: { get_property: [SELF, name] }
+            adminUsername: { get_input: vm_os_username }
+            adminPassword: { get_input: vm_os_password }
+            linuxConfiguration:
+              ssh:
+                publicKeys: { get_input: vm_os_pubkeys }
+              disablePasswordAuthentication: { get_input: vm_os_pubkey_auth_only }
+      agent_config:
+        default:
+          user: { get_input: vm_os_username }
+          password: { get_input: vm_os_password }
+          install_method: remote
+    interfaces:
+
+      ###########################################################
+      # We are infact telling cloudify to install a diamond
+      # monitoring agent on the server.
+      #
+      # (see https://github.com/BrightcoveOS/Diamond)
+      ###########################################################
+
+      cloudify.interfaces.monitoring_agent:
+          install:
+            implementation: diamond.diamond_agent.tasks.install
+            inputs:
+              diamond_config:
+                default:
+                  interval: 1
+          start: diamond.diamond_agent.tasks.start
+          stop: diamond.diamond_agent.tasks.stop
+          uninstall: diamond.diamond_agent.tasks.uninstall
+
+      ###########################################################
+      # Adding some collectors. These collectors are necessary
+      # for the Cloudify UI to display the deafult metrics.
+      ###########################################################
+
+      cloudify.interfaces.monitoring:
+          start:
+            implementation: diamond.diamond_agent.tasks.add_collectors
+            inputs:
+              collectors_config:
+                default:
+                  CPUCollector: {}
+                  MemoryCollector: {}
+                  LoadAverageCollector: {}
+                  DiskUsageCollector:
+                    config:
+                      devices: x?vd[a-z]+[0-9]*$
+                  NetworkCollector: {}
+
+  ###########################################################
+  # Mongo Database.
+  #
+  # Used the data backend for the nodecellar application.
+  # configurable properties:
+  #   - port
+  ###########################################################
+
+node_templates:
+
+  nodecellar:
+    type: nodecellar.nodes.NodecellarApplicationModule
+    properties:
+      port: { get_input: webserver_port }
+    relationships:
+
+      ################################
+      # Setting the mongo connection
+      ################################
+
+      - type: node_connected_to_mongo
+        target: mongod
+
+      ################################
+      # Setting the nodejs connection
+      ################################
+
+      - type: node_contained_in_nodejs
+        target: nodejs
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: mongo_host
+
+  nodejs:
+    type: nodecellar.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongo_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      name: {concat:[{get_input: resource_prefix},mongohost,{get_input: resource_suffix}]}
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+    - type: cloudify.azure.relationships.connected_to_storage_account
+      target: storage_account
+    - type: cloudify.azure.relationships.connected_to_availability_set
+      target: availability_set
+    - type: cloudify.azure.relationships.connected_to_nic
+      target: mongo_host_nic
+
+  nodejs_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      name: {concat:[{get_input: resource_prefix},nodejshost,{get_input: resource_suffix}]}
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+    - type: cloudify.azure.relationships.connected_to_storage_account
+      target: storage_account
+    - type: cloudify.azure.relationships.connected_to_availability_set
+      target: availability_set
+    - type: cloudify.azure.relationships.connected_to_nic
+      target: nodejs_host_nic
+
+  resource_group:
+    type: cloudify.azure.nodes.ResourceGroup
+    properties:
+      name: {concat:[{get_input: resource_prefix},arg,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+
+  storage_account:
+    type: cloudify.azure.nodes.storage.StorageAccount
+    properties:
+      name: {concat:[{get_input: resource_prefix},asa,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+      resource_config:
+        accountType: Standard_LRS
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+
+  virtual_network:
+    type: cloudify.azure.nodes.network.VirtualNetwork
+    properties:
+      resource_group_name: { get_input: mgr_resource_group_name }
+      name: { get_input: mgr_virtual_network_name }
+      azure_config: *azure_config
+      use_external_resource: true
+      location: { get_input: location }
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+
+  subnet:
+    type: cloudify.azure.nodes.network.Subnet
+    properties:
+      resource_group_name: { get_input: mgr_resource_group_name }
+      name: { get_input: mgr_subnet_name }
+      azure_config: *azure_config
+      use_external_resource: true
+      location: { get_input: location }
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_virtual_network
+      target: virtual_network
+
+  network_security_group:
+    type: cloudify.azure.nodes.network.NetworkSecurityGroup
+    properties:
+      name: {concat:[{get_input: resource_prefix},nsg,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+      resource_config:
+        securityRules:
+        - name: njssg_ssh
+          properties:
+            description: SSH access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: 22
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 102
+            access: Allow
+            direction: Inbound
+        - name: njssg_http
+          properties:
+            description: HTTP access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: { get_property: [ nodecellar, port ] }
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 103
+            access: Allow
+            direction: Inbound
+        - name: njssg_mongoa
+          properties:
+            description: Mongo access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: { get_property: [ mongod, port ] }
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 104
+            access: Allow
+            direction: Inbound
+        - name: njssg_mongob
+          properties:
+            description: Mongo API access
+            protocol: Tcp
+            sourcePortRange: '*'
+            destinationPortRange: 28017
+            sourceAddressPrefix: '*'
+            destinationAddressPrefix: '*'
+            priority: 105
+            access: Allow
+            direction: Inbound
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+
+  availability_set:
+    type: cloudify.azure.nodes.compute.AvailabilitySet
+    properties:
+      name: {concat:[{get_input: resource_prefix},availset,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+
+  mongo_host_nic:
+    type: cloudify.azure.nodes.network.NetworkInterfaceCard
+    properties:
+      name: {concat:[{get_input: resource_prefix},mongohostnic,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+    - type: cloudify.azure.relationships.nic_connected_to_network_security_group
+      target: network_security_group
+    - type: cloudify.azure.relationships.connected_to_ip_configuration
+      target: mongo_host_nic_ip_cfg
+
+  nodejs_host_nic:
+    type: cloudify.azure.nodes.network.NetworkInterfaceCard
+    properties:
+      name: {concat:[{get_input: resource_prefix},nodejs_host_nic,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+    - type: cloudify.azure.relationships.nic_connected_to_network_security_group
+      target: network_security_group
+    - type: cloudify.azure.relationships.connected_to_ip_configuration
+      target: nodejs_host_nic_ip_cfg
+
+  mongo_host_nic_ip_cfg:
+    type: cloudify.azure.nodes.network.IPConfiguration
+    properties:
+      name: {concat:[{get_input: resource_prefix},mongo_host_ip_cfg,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+      resource_config:
+        privateIPAllocationMethod: Dynamic
+    relationships:
+    - type: cloudify.azure.relationships.ip_configuration_connected_to_subnet
+      target: subnet
+
+  nodejs_host_nic_ip_cfg:
+    type: cloudify.azure.nodes.network.IPConfiguration
+    properties:
+      name: {concat:[{get_input: resource_prefix},nodejs_host_ip_cfg,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+      resource_config:
+        privateIPAllocationMethod: Dynamic
+    relationships:
+    - type: cloudify.azure.relationships.ip_configuration_connected_to_subnet
+      target: subnet
+    - type: cloudify.azure.relationships.ip_configuration_connected_to_public_ip
+      target: nodecellar_ip
+
+  nodecellar_ip:
+    type: cloudify.azure.nodes.network.PublicIPAddress
+    properties:
+      name: {concat:[{get_input: resource_prefix},nodejs_host_pip,{get_input: resource_suffix}]}
+      location: { get_input: location }
+      azure_config: *azure_config
+      retry_after: { get_input: retry_after }
+      resource_config:
+        publicIPAllocationMethod: Static
+    relationships:
+    - type: cloudify.azure.relationships.contained_in_resource_group
+      target: resource_group
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: { get_attribute: [ nodejs_host, public_ip ] }
+      port: { get_property: [ nodecellar, port ] }
