@@ -1,0 +1,5 @@
+nodejs_host_ip: ''
+mongod_host_ip: ''
+agent_user: ''
+agent_private_key_path: ''
+

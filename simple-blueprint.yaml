@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on an existing host.
+  This blueprint installs the Node Cellar application
+  on hosts with known IP addresses.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.4rc1/types.yaml
@@ -11,27 +11,31 @@ imports:
   - types/simple-types.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
-  host_ip:
-      description: >
-        The ip of the host the application will be deployed on
+  nodejs_host_ip:
+    description: >
+      IP address of nodejs_host
+
+  mongod_host_ip:
+    description: >
+      IP address of mongod_host
 
   agent_user:
       description: >
-        User name used when SSH-ing into the started machine
+        Username for SSH connections to hosts from Cloudify Manager
 
   agent_private_key_path:
       description: >
-        Path to a private key that resided on the management machine.
-        SSH-ing into agent machines will be done with this key.
+        Path to private key used for SSH connections to hosts
+        (must be accessible by Cloudify Manager)
 
 node_templates:
 
@@ -40,46 +44,64 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
-        target_interfaces:
-          cloudify.interfaces.relationship_lifecycle:
-            postconfigure:
-              inputs:
-                mongo_ip_address: localhost
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
         target: nodejs
 
-  mongod:
-    type: nodecellar.nodes.MonitoredMongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
-
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
-      - type: cloudify.relationships.contained_in
-        target: host
 
-  host:
+      ################################
+      # Contained in nodejs host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: nodejs_host
+
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+
+      ################################
+      # Contained in mongod host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  ############
+  # Hosts
+  ############
+
+  nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
-      ip: { get_input: host_ip }
+      ip: { get_input: nodejs_host_ip }
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
+
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      ip: { get_input: mongod_host_ip }
       cloudify_agent:
         user: { get_input: agent_user }
         key: { get_input: agent_private_key_path }
 
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
@@ -88,5 +110,6 @@ outputs:
   endpoint:
     description: Web application endpoint
     value:
-      ip_address: { get_property: [ host, ip ] }
+      ip_address: { get_property: [ nodejs_host, ip ] }
       port: { get_property: [ nodecellar, port ] }
+
