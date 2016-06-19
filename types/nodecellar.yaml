@@ -89,7 +89,7 @@ node_types:
       port:
         description: Web application port
         type: integer
-        default: 8080
+        default: 8079
       application_url:
         description: >
           URL to an archive containing the application source.
