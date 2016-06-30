@@ -1,8 +1,8 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  This Blueprint installs the nodecellar application
-  on a softlayer cloud environment.
+  This blueprint installs the Node Cellar application
+  on an IBM SoftLayer environment.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/3.5m1/types.yaml
@@ -12,19 +12,19 @@ imports:
   - types/softlayer-types.yaml
 
 #####################################################################################
-# inputs section allows the user to use same
-# blueprint for creating different deployments, each one
-# with its own parameters.
-# to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+# The inputs section allows the user to use same blueprint for creating different
+# deployments, each one with its own parameters.
+#
+# To specify deployment inputs run:
+#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.yaml
 #####################################################################################
 
 inputs:
 
   location:
     description: >
-      Location of the data center
-      Default value is the location id of Melbourne 1
+      Location of the data center for provisioning VMs;
+      Default value is 1, for Melbourne
     default: 449596
 
   domain:
@@ -33,26 +33,26 @@ inputs:
 
   ram:
     description: >
-      Item id of the ram
-      Default value is the item id of 16 GB
+      RAM item ID for provisioning VMs;
+      Default value is the item ID for 16 GB
     default: 1017
 
   cpu:
     description: >
-      Item id of the cpu
-      Default value is the item id of 4 x 2.0 GHz Cores
+      CPU item ID for provisioning VMs;
+      Default value is the item ID for 4 x 2.0 GHz cores
     default: 859
 
   disk:
     description: >
-      Item id of the disk
-      Default value is the item id of 25 GB (SAN)
+      Disk item ID for provisioning VMs;
+      Default value is the item ID for 25 GB (SAN)
     default: 1178
 
   os:
     description: >
-      Item id of the operating system
-      Default value is the item id of
+      Operating system ID for provisioning VMs;
+      Default value is the item ID for
       Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)
     default: 4668
 
@@ -63,43 +63,58 @@ node_templates:
     relationships:
 
       ################################
-      # Setting the mongo connection
+      # Connected to mongod node
       ################################
 
       - type: node_connected_to_mongo
         target: mongod
 
       ################################
-      # Setting the nodejs connection
+      # Contained in nodejs node
       ################################
 
       - type: node_contained_in_nodejs
         target: nodejs
 
-  mongod:
-    type: nodecellar.nodes.MonitoredMongoDatabase
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: mongod_host
-
   nodejs:
     type: nodecellar.nodes.NodeJSServer
     relationships:
+
+      ################################
+      # Contained in nodejs host
+      ################################
+
       - type: cloudify.relationships.contained_in
         target: nodejs_host
 
-  mongod_host:
-    type: nodecellar.nodes.MonitoredServer
-    properties:
-      hostname: mongod
+  mongod:
+    type: nodecellar.nodes.MonitoredMongoDatabase
+    relationships:
+
+      ################################
+      # Contained in mongod host
+      ################################
+
+      - type: cloudify.relationships.contained_in
+        target: mongod_host
+
+  ############
+  # Hosts
+  ############
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
     properties:
       hostname: nodejs
 
+  mongod_host:
+    type: nodecellar.nodes.MonitoredServer
+    properties:
+      hostname: mongod
+
 ###########################################################
-# This outputs section exposes the application endpoint.
+# The outputs section exposes the application endpoint.
+#
 # You can access it by running:
 #   - cfy deployments -d <deployment_id> outputs
 ###########################################################
