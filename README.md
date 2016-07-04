@@ -1,6 +1,6 @@
 # Cloudify Nodecellar Example
 
-* Master [![Circle CI](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master.svg?&style=shield)](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master)
+[![Circle CI](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master.svg?&style=shield)](https://circleci.com/gh/cloudify-cosmo/cloudify-nodecellar-example/tree/master)
 
 ![alt text](http://img.shields.io/badge/nodecellar--local-tested-green.svg)
 ![alt text](http://img.shields.io/badge/nodecellar--aws--ec2-tested-green.svg)
@@ -22,11 +22,8 @@ Nodecellar example consists of:
 - A NodeJS Server
 - A Javascript Application
 
-Before you begin its recommended you familiarize yourself with
-[Cloudify Terminology](http://getcloudify.org/guide/3.1/reference-terminology.html).
-
 The first thing you'll need to do is
-[install the Cloudify CLI](http://getcloudify.org/guide/3.1/installation-cli.html).
+[install the Cloudify CLI](http://docs.getcloudify.org/latest/intro/installation/).
 <br>
 This will let you run the various blueprints.
 
