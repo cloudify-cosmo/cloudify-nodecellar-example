@@ -56,7 +56,7 @@ node_types:
         default: 32
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: scripts/haproxy/install-ubuntu.sh
+        create: scripts/haproxy/install.sh
         configure:
           implementation: scripts/haproxy/haproxy.py
           inputs:
