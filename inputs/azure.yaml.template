@@ -1,0 +1,47 @@
+## Account info
+#subscription_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+#tenant_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+#client_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+#client_secret: XXXXYYYYZZZZ0000
+#location: eastus
+
+## General
+#retry_after: 30
+
+## Deployment info
+#resource_prefix: ncdemo
+#resource_suffix: 10
+
+## Manager info
+#mgr_resource_group_name: mgrrg
+#mgr_virtual_network_name: mgrvnet
+#mgr_subnet_name: mgrsubnet
+#mgr_storage_account_name: mgrsa
+
+## VM info
+#vm_size: Standard_A2
+#vm_os_family: linux
+
+## VM image
+#vm_image_publisher: OpenLogic
+#vm_image_offer: CentOS
+#vm_image_sku: '7.0'
+#vm_image_version: latest
+
+## Application info
+#webserver_port: 8080
+#loadbalancer_port: 80
+
+## Instance account info
+#vm_os_username: cloudify
+#vm_os_password: Cl0ud1fy!
+#vm_os_pubkeys:
+#    - path: { concat: ["/home/", { get_input: vm_os_username }, "/.ssh/authorized_keys"] }
+#      keyData:
+#        "ssh-rsa 000000000/REPLACE/0000000000000UJy5McWvvqoKMkwPn+Evnvb67\
+#        9BGySsd0SMYYYYYYYYYG7Tke60psxWkO/DAOXnrAlm/UkoY9wqGSCJRCEvTOJvSP\
+#        vHNo2nTdibzNFl8NnJsHWJAbeuu5XXXXXXXXX0GUKCSAtSl/5+aFbKO0QEA74kVN\
+#        48PB3gXNxzL5/wkv/SZEa65lhbJHo0y/Swsa5ssrQ3i9p/dlwg6tZZtEFJDK9a7r\
+#        MYa3Xq5lbBtYeUU9MTAsX+u5HnEPFLYkzCsKC9pfv7kAXzXZZZZZZZZZZAG3AaGp\
+#        U9yT/O22222222222222asi6NM3JIzJlwymk4Kf0F4D+A5hbpAdy9zW1YXovQppb"
+#vm_os_pubkey_auth_only: true
