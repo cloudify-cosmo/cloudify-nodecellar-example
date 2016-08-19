@@ -12,7 +12,7 @@ imports:
 # blueprint for creating different deployments, each one
 # with its own parameters.
 # to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#   - cfy deployments create -b <blueprint_id> <deployment_id> -i inputs.json
 #####################################################################################
 
 inputs:
