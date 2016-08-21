@@ -16,7 +16,7 @@ imports:
 # blueprint for creating different deployments, each one
 # with its own parameters.
 # to specify deployment inputs run:
-#   - cfy deployments create -b <blueprint_id> -d <deployment_id> -i inputs.json
+#   - cfy deployments create -b <blueprint_id> <deployment_id> -i inputs.json
 #####################################################################################
 
 inputs:
@@ -101,7 +101,7 @@ node_templates:
 ###########################################################
 # This outputs section exposes the application endpoint.
 # You can access it by running:
-#   - cfy deployments -d <deployment_id> outputs
+#   - cfy deployments outputs <deployment_id>
 ###########################################################
 
 outputs:

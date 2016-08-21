@@ -39,7 +39,7 @@ Let see how this is done:
 
 ### Step 1: Initialize
 
-`cfy local init -p local-blueprint.yaml` <br>
+`cfy init local-blueprint.yaml` <br>
 
 This command (as the name suggests) initializes your working directory to work with the given blueprint.
 Now, you can run any type of workflows on this blueprint. <br>
@@ -48,7 +48,7 @@ Now, you can run any type of workflows on this blueprint. <br>
 
 Lets run the `install` workflow: <br>
 
-`cfy local execute -w install`
+`cfy executions start install`
 
 This command will install all the application components on you local machine.
 (don't worry, its all installed under the `tmp` directory)<br>
@@ -60,7 +60,7 @@ Once its done, you should be able to browse to [http://localhost:8080](http://lo
 
 To uninstall the application we run the `uninstall` workflow: <br>
 
-`cfy local execute -w uninstall`
+`cfy executions start uninstall`
 
 ## All other blueprints
 
@@ -89,7 +89,7 @@ Great, now that you have your very own Cloudify Manager, we can work with these 
 
 ### Step 2: Upload the blueprint
 
-`cfy blueprints upload -b <choose_blueprint_id> -p <blueprint_filename>` <br>
+`cfy blueprints upload -b <choose_blueprint_id> <blueprint_filename>` <br>
 
 ### Step 3: Create a deployment
 
@@ -99,13 +99,13 @@ Note that these files only contain the **mandatory** inputs, i.e, one's that the
 
 After you filled the input file corresponding to your blueprint, run: <br>
 
-`cfy deployments create -b <blueprint_id> -d <choose_deployment_id> -i inputs/<inputs_filename>`
+`cfy deployments create -b <blueprint_id> <choose_deployment_id> -i inputs/<inputs_filename>`
 
 ### Step 4: Install
 
 Once the deployment is created, we can start running workflows: <br>
 
-`cfy executions start -w install -d <deployment_id>`
+`cfy executions start install -d <deployment_id>`
 
 This process will create all the cloud resources needed for the application: <br>
 
@@ -128,14 +128,14 @@ Hit that URL to see the application running.
 Now lets run the `uninstall` workflow. This will uninstall the application,
 as well as delete all related resources. <br>
 
-`cfy executions start -w uninstall -d <deployment_id>`
+`cfy executions start uninstall -d <deployment_id>`
 
 ### Step 7: Delete the deployment
 
 Its best to delete deployments we are no longer using, since they take up memory on the management machine.
 We do this by running:
 
-`cfy deployments delete -d <deployment_id>`
+`cfy deployments delete <deployment_id>`
 
 ### Step 8: Tearing down the manager
 

@@ -14,17 +14,17 @@ install:
 
 script:
     - cfy init
-    - cfy blueprints validate -p aws-ec2-blueprint.yaml
-    - cfy blueprints validate -p cloudstack-blueprint.yaml
-    - cfy blueprints validate -p host-pool-blueprint.yaml
-    - cfy blueprints validate -p local-blueprint.yaml
-    - cfy blueprints validate -p openstack-blueprint.yaml
-    - cfy blueprints validate -p openstack-haproxy-blueprint.yaml
-    - cfy blueprints validate -p openstack-nova-net-blueprint.yaml
-    - cfy blueprints validate -p simple-blueprint.yaml
-    - cfy blueprints validate -p softlayer-blueprint.yaml
-    - cfy blueprints validate -p vcloud-blueprint.yaml
-    - cfy blueprints validate -p vsphere-blueprint.yaml
-    - cfy local init -p local-blueprint.yaml
-    - cfy local execute -w install
-    - cfy local execute -w uninstall
+    - cfy blueprints validate aws-ec2-blueprint.yaml
+    - cfy blueprints validate cloudstack-blueprint.yaml
+    - cfy blueprints validate host-pool-blueprint.yaml
+    - cfy blueprints validate local-blueprint.yaml
+    - cfy blueprints validate openstack-blueprint.yaml
+    - cfy blueprints validate openstack-haproxy-blueprint.yaml
+    - cfy blueprints validate openstack-nova-net-blueprint.yaml
+    - cfy blueprints validate simple-blueprint.yaml
+    - cfy blueprints validate softlayer-blueprint.yaml
+    - cfy blueprints validate vcloud-blueprint.yaml
+    - cfy blueprints validate vsphere-blueprint.yaml
+    - cfy init local-blueprint.yaml
+    - cfy executions start install
+    - cfy executions start uninstall
