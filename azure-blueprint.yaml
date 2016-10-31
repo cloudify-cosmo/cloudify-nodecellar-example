@@ -6,7 +6,7 @@ description: >
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/4.0m6/types.yaml
-  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-azure-plugin/master/plugin.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-azure-plugin/1.4.1/plugin.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.4/plugin.yaml
   - types/nodecellar.yaml
 
@@ -416,7 +416,7 @@ node_templates:
       target: resource_group
     - type: cloudify.azure.relationships.nic_connected_to_network_security_group
       target: network_security_group
-    - type: cloudify.azure.relationships.connected_to_ip_configuration
+    - type: cloudify.azure.relationships.nic_connected_to_ip_configuration
       target: mongo_host_nic_ip_cfg
 
   nodejs_host_nic:
@@ -431,7 +431,7 @@ node_templates:
       target: resource_group
     - type: cloudify.azure.relationships.nic_connected_to_network_security_group
       target: network_security_group
-    - type: cloudify.azure.relationships.connected_to_ip_configuration
+    - type: cloudify.azure.relationships.nic_connected_to_ip_configuration
       target: nodejs_host_nic_ip_cfg
 
   mongo_host_nic_ip_cfg:
