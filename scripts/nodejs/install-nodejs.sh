@@ -39,7 +39,7 @@ function untar() {
 
     if [ ! -d ${destination} ]; then
         ctx logger info "Untaring ${tar_archive}"
-        tar -zxvf ${tar_archive}
+        tar -xf ${tar_archive}
 
         ctx logger info "Moving ${inner_name} to ${destination}"
         mv ${inner_name} ${destination}
@@ -47,7 +47,7 @@ function untar() {
 }
 
 TEMP_DIR='/tmp'
-NODEJS_TARBALL_NAME='node-v0.10.26-linux-x64.tar.gz'
+NODEJS_TARBALL_NAME='node-v6.9.1-linux-x64.tar.xz'
 
 ################################
 # Directory that will contain:
@@ -58,11 +58,16 @@ NODEJS_BINARIES_PATH=${NODEJS_ROOT}/nodejs-binaries
 mkdir -p ${NODEJS_ROOT}
 
 cd ${TEMP_DIR}
-download http://nodejs.org/dist/v0.10.26/${NODEJS_TARBALL_NAME} ${NODEJS_TARBALL_NAME}
+download https://nodejs.org/dist/v6.9.1/${NODEJS_TARBALL_NAME} ${NODEJS_TARBALL_NAME}
 untar ${NODEJS_TARBALL_NAME} ${NODEJS_BINARIES_PATH}
 
 # this runtime property is used by the start-nodecellar-app.sh
 ctx instance runtime_properties nodejs_binaries_path ${NODEJS_BINARIES_PATH}
+
+ctx logger info "Fixing node path in npm-cli.js..."
+NPM_CLI_PATH=${NODEJS_BINARIES_PATH}/lib/node_modules/npm/bin/npm-cli.js
+NPM_CLI_FIRST_LINE="\#\!${NODEJS_BINARIES_PATH}/bin/node"
+sed -i "1s/.*/${NPM_CLI_FIRST_LINE//\//\\/}/" ${NPM_CLI_PATH}
 
 ctx logger info "Sucessfully installed NodeJS"
 
