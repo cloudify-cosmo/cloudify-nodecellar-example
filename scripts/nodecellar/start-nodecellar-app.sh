@@ -2,7 +2,7 @@
 
 set -e
 
-ctx logger info "${port}"
+ctx logger info ".....${port}...."
 
 function get_response_code() {
 
