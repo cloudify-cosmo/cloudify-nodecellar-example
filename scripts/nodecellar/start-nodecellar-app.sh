@@ -2,6 +2,8 @@
 
 set -e
 
+ctx logger info "${port}"
+
 function get_response_code() {
 
     port=$1
