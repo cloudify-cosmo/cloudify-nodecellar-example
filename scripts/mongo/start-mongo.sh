@@ -63,6 +63,11 @@ ctx logger info "${COMMAND}"
 nohup ${COMMAND} > /dev/null 2>&1 &
 PID=$!
 
+ctx logger info "PID::  ${PID}!!!!!!!!!!!!!"
+MSG=$(ps aux)
+echo ${MSG} >> test1.txt
+
+
 MONGO_REST_PORT=`expr ${PORT} + 1000`
 wait_for_server ${MONGO_REST_PORT} 'MongoDB'
 
