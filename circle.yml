@@ -19,7 +19,10 @@ dependencies:
     - pip install https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.4.zip
     - pip install https://github.com/cloudify-cosmo/cloudify-cli/archive/4.0m8.zip
     - pip install https://github.com/cloudify-cosmo/tosca-vcloud-plugin/archive/1.3.1.zip
-
+    - sudo service mongod stop
+    - sudo apt-get purge mongodb-org*
+    - sudo rm -r /var/log/mongodb
+    - sudo rm -r /var/lib/mongodb
 
 test:
   override:
