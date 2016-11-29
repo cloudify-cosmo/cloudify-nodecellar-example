@@ -69,7 +69,8 @@ ctx logger info "MongoDB is located at ${MONGO_HOST}:${MONGO_PORT}"
 ctx logger info "Starting nodecellar application on port ${NODECELLAR_PORT}"
 
 ctx logger info "${COMMAND}"
-nohup ${COMMAND} > /dev/null 2>&1 &
+#nohup ${COMMAND} > /dev/null 2>&1 &
+${COMMAND} &
 PID=$!
 
 wait_for_server ${NODECELLAR_PORT} 'Nodecellar'
