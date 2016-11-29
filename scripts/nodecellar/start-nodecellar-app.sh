@@ -70,7 +70,7 @@ ctx logger info "Starting nodecellar application on port ${NODECELLAR_PORT}"
 
 ctx logger info "${COMMAND}"
 #nohup ${COMMAND} > /dev/null 2>&1 &
-${COMMAND} &
+nohup ${COMMAND} > /dev/null &
 PID=$!
 
 wait_for_server ${NODECELLAR_PORT} 'Nodecellar'
