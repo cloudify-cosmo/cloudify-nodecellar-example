@@ -5,9 +5,9 @@ description: >
   an haproxy instance on an openstack cloud environment.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/3.4.1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/3.4.2/types.yaml
   - http://www.getcloudify.org/spec/openstack-plugin/1.4/plugin.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3.3/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.5/plugin.yaml
   - types/nodecellar.yaml
   - types/openstack-types.yaml
   - types/haproxy/haproxy.yaml
