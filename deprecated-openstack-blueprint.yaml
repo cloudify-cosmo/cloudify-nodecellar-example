@@ -24,25 +24,14 @@ inputs:
   image:
     description: >
       Image to be used when launching agent VM's
+
   flavor:
     description: >
       Flavor of the agent VM's
+
   agent_user:
     description: >
       User for connecting to agent VM's
-  network_name:
-    description: >
-      Openstack network name the new server will be connected to
-  floating_network_id:
-    description: >
-      The id of the network to use for allocating a floating ip
-  key_pair_name:
-    description: >
-      Openstack key pair name of the key to associate with the new server
-  private_key_path:
-    description: |
-      Path to the private key which will be used for connecting to the server
-      on the manager or machine running CLI if running in local mode.      
 
 node_templates:
 
@@ -78,27 +67,7 @@ node_templates:
 
   mongod_host:
     type: nodecellar.nodes.MonitoredServer
-
-    properties:
-      agent_config:
-        key: { get_property: [ keypair, private_key_path ] }
-      management_network_name: { get_input: network_name }
-
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create:
-          inputs:
-            args:
-              security_groups: [{ get_attribute: [ mongod_security_group, external_name ]}]
-
     relationships:
-
-      ###########################################################
-      # Set the keypair for the VM
-      ###########################################################
-
-      - type: cloudify.openstack.server_connected_to_keypair
-        target: keypair
 
       ###########################################################
       # Attaching the mongo security group to the mongo host
@@ -109,27 +78,7 @@ node_templates:
 
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
-
-    properties:
-      agent_config:
-        key: { get_property: [ keypair, private_key_path ] }
-      management_network_name: { get_input: network_name }
-
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create:
-          inputs:
-            args:
-              security_groups: [{ get_attribute: [ nodecellar_security_group, external_name ]}]
-
     relationships:
-
-      ###########################################################
-      # Set the keypair for the VM
-      ###########################################################
-
-      - type: cloudify.openstack.server_connected_to_keypair
-        target: keypair
 
       ###########################################################
       # Attaching an ip to the nodejs host
@@ -165,8 +114,6 @@ node_templates:
           port: { get_property: [ mongod, port ] }
         - remote_ip_prefix: 0.0.0.0/0
           port: 28017
-        - port: 22
-          remote_ip_prefix: 0.0.0.0/0
 
   ###########################################################
   # A security group to enable access to the nodejs host
@@ -184,8 +131,6 @@ node_templates:
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
-        - port: 22
-          remote_ip_prefix: 0.0.0.0/0
 
   ###########################################################
   # An ip to be attached to the nodejs host, since
@@ -195,21 +140,6 @@ node_templates:
 
   nodecellar_ip:
     type: cloudify.openstack.nodes.FloatingIP
-    properties:
-      floatingip:
-        floating_network_id: { get_input: floating_network_id }
-
-  ###########################################################
-  # Key pair for connecting to the VMs using SSH.
-  # The key pair should exist in the OpenStack environment.
-  ###########################################################
-
-  keypair:
-    type: cloudify.openstack.nodes.KeyPair
-    properties:
-      use_external_resource: true
-      resource_id: { get_input: key_pair_name }
-      private_key_path: { get_input: private_key_path }
 
 ###########################################################
 # This outputs section exposes the application endpoint.
