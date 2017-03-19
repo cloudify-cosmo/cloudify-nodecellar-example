@@ -9,13 +9,13 @@ node_types:
   nodecellar.nodes.MonitoredServer:
     derived_from: cloudify.openstack.nodes.Server
     properties:
+      image:
+        default: { get_input: image }
+      flavor:
+        default: { get_input: flavor }
       cloudify_agent:
         default:
           user: { get_input: agent_user }
-      server:
-        default:
-          image: { get_input: image }
-          flavor: { get_input: flavor }
     interfaces:
 
       ###########################################################
