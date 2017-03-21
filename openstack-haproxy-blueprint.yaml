@@ -100,14 +100,6 @@ node_templates:
   nodejs_host:
     type: nodecellar.nodes.MonitoredServer
 
-    ###########################################################
-    # Setting the nodejs_host initial number of instances to 2.
-    # The default values for instances.deploy is 1.
-    ###########################################################
-
-    instances:
-      deploy: 2
-
     relationships:
 
       ###########################################################
