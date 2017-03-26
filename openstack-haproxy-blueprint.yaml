@@ -44,6 +44,12 @@ inputs:
     description: |
       Path to the private key which will be used for connecting to the server
       on the manager or machine running CLI if running in local mode.      
+  number_of_instances:
+    description: |
+      The number of web server instances. Requests to the web servers will
+      be load balanced by the haproxy service.
+    type: integer
+    default: 2
 
 node_templates:
 
@@ -141,8 +147,10 @@ node_templates:
     # The default values for instances.deploy is 1.
     ###########################################################
 
-    instances:
-      deploy: 2
+    capabilities:
+      scalable:
+        properties:
+          default_instances: { get_input: number_of_instances }
 
     interfaces:
       cloudify.interfaces.lifecycle:
@@ -226,6 +234,8 @@ node_templates:
           port: { get_property: [ mongod, port ] }
         - remote_ip_prefix: 0.0.0.0/0
           port: 28017
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 22
 
   ###########################################################
   # A security group to enable access to the nodejs host
@@ -242,6 +252,8 @@ node_templates:
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 22
 
   ###########################################################
   # A security group to enable access to the haproxy frontend
@@ -262,6 +274,8 @@ node_templates:
           port: { get_property: [ haproxy, frontend_port ] }
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ haproxy, statistics_port ]}
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 22
 
   ###########################################################
   # An ip to be attached to the haproxy frontend host, since
