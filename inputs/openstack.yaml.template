@@ -1,3 +1,7 @@
 image: ''
 flavor: ''
 agent_user: ''
+network_name: ''
+floating_network_id: ''
+key_pair_name: ''
+private_key_path: ''
