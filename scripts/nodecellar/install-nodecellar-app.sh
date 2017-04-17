@@ -91,6 +91,7 @@ extract ${NODECELLAR_ARCHIVE_NAME} ${NODECELLAR_SOURCE_PATH}
 cd ${NODECELLAR_SOURCE_PATH}
 ctx logger info "Installing nodecellar dependencies using npm"
 ${NODEJS_BINARIES_PATH}/bin/npm install
+${NODEJS_BINARIES_PATH}/bin/npm install --save morgan
 
 ctx instance runtime_properties nodecellar_source_path ${NODECELLAR_SOURCE_PATH}
 
