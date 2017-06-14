@@ -25,6 +25,3 @@ script:
     - cfy blueprints validate softlayer-blueprint.yaml
     - cfy blueprints validate vcloud-blueprint.yaml
     - cfy blueprints validate vsphere-blueprint.yaml
-    - cfy init local-blueprint.yaml
-    - cfy executions start install
-    - cfy executions start uninstall
