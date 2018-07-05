@@ -6,7 +6,7 @@ description: >
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/4.4/types.yaml
-  - http://www.getcloudify.org/spec/diamond-plugin/1.3.13/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.14/plugin.yaml
   - plugin:cloudify-aws-plugin?version=1.4.10
   - types/nodecellar.yaml
   - types/aws-ec2-types.yaml
