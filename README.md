@@ -81,7 +81,7 @@ Doing this requires first to bootstrap a Cloudify Manager.<br>
 
 ### Step 1: Install a Cloudify Manager
 
-Please refer to [INSTALLING AND CONFIGURING CLOUDIFY MANAGER](https://docs.cloudify.co/4.5.5/install_maintain/installation/installing-manager/) to install your own Cloudify Manager.
+Please refer to [INSTALLING AND CONFIGURING CLOUDIFY MANAGER](https://docs.cloudify.co/latest/install_maintain/installation/installing-manager/) to install your own Cloudify Manager.
 <br><br>
 
 Great, now that you have your very own Cloudify Manager, we can work with these blueprints.
