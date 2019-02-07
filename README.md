@@ -79,9 +79,9 @@ information can be found [Here](http://getcloudify.org/guide/3.2/plugin-host-poo
 All of these blueprints allow you to install the nodecellar application on different cloud environments.
 Doing this requires first to bootstrap a Cloudify Manager.<br>
 
-### Step 1: Bootstrapping
+### Step 1: Install a Cloudify Manager
 
-Please refer to [Bootstrapping Cloudify](http://getcloudify.org/guide/3.1/installation-bootstrapping.html) to setup your own Cloudify Manager.
+Please refer to [INSTALLING AND CONFIGURING CLOUDIFY MANAGER](https://docs.cloudify.co/latest/install_maintain/installation/installing-manager/) to install your own Cloudify Manager.
 <br><br>
 
 Great, now that you have your very own Cloudify Manager, we can work with these blueprints.
