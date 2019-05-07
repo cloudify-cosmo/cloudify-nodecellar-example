@@ -16,3 +16,5 @@ node_types:
       cloudify_agent:
         default:
           user: { get_input: agent_user }
+    interfaces:
+      cloudify.interfaces.validation: {}
