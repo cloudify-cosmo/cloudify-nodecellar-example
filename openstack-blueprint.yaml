@@ -135,8 +135,8 @@ node_templates:
       # Attaching an ip to the nodejs host
       ###########################################################
 
-      - target: nodecellar_ip
-        type: cloudify.openstack.server_connected_to_floating_ip
+      - target: nodecellar_port
+        type: cloudify.openstack.server_connected_to_port
 
       ###########################################################
       # Attaching the nodecellar security group to
@@ -199,6 +199,17 @@ node_templates:
       floatingip:
         floating_network_id: { get_input: floating_network_id }
 
+  ############## TODO :: docstring ####################
+
+  nodecellar_port:
+    type: cloudify.openstack.nodes.Port
+    properties:
+      port:
+        default: { get_property: [ nodecellar, port ] }
+    relationships:
+      - target: nodecellar_ip
+          type: cloudify.openstack.port_connected_to_floating_ip
+
   ###########################################################
   # Key pair for connecting to the VMs using SSH.
   # The key pair should exist in the OpenStack environment.
@@ -223,3 +234,9 @@ outputs:
     value:
       ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
+
+########## scale groups ################
+
+groups:
+  nodejs_host_group:
+    members: [nodejs_host, nodecellar_ip, nodecellar_port]
