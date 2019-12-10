@@ -199,7 +199,9 @@ node_templates:
       floatingip:
         floating_network_id: { get_input: floating_network_id }
 
-  ############## TODO :: docstring ####################
+  ###########################################################
+  # A port to be attached to the ip (default NodeCellar port)
+  ###########################################################
 
   nodecellar_port:
     type: cloudify.openstack.nodes.Port
@@ -208,7 +210,7 @@ node_templates:
         default: { get_property: [ nodecellar, port ] }
     relationships:
       - target: nodecellar_ip
-          type: cloudify.openstack.port_connected_to_floating_ip
+        type: cloudify.openstack.port_connected_to_floating_ip
 
   ###########################################################
   # Key pair for connecting to the VMs using SSH.
