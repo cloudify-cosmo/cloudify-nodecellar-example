@@ -143,8 +143,6 @@ node_templates:
       # the nodecellar host
       ###########################################################
 
-      - target: nodecellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
       - type: cloudify.relationships.contained_in
         target: scaling_group
 
@@ -210,14 +208,21 @@ node_templates:
 
   nodecellar_port:
     type: cloudify.openstack.nodes.Port
-    properties:
-      port:
-        default: { get_property: [ nodecellar, port ] }
     relationships:
+      - type: cloudify.relationships.connected_to
+        target: network
       - target: nodecellar_ip
         type: cloudify.openstack.port_connected_to_floating_ip
       - type: cloudify.relationships.contained_in
         target: scaling_group
+      - target: nodecellar_security_group
+        type: cloudify.openstack.port_connected_to_security_group
+
+  network:
+    type: cloudify.openstack.nodes.Network
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: network_name }
 
   ###########################################################
   # Key pair for connecting to the VMs using SSH.
