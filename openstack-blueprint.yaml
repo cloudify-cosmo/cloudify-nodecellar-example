@@ -145,6 +145,8 @@ node_templates:
 
       - target: nodecellar_security_group
         type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -159,7 +161,7 @@ node_templates:
     type: cloudify.openstack.nodes.SecurityGroup
     properties:
       security_group:
-        name: mongod_security_group
+        description: mongod_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
@@ -180,7 +182,7 @@ node_templates:
     type: cloudify.openstack.nodes.SecurityGroup
     properties:
       security_group:
-        name: nodecellar_security_group
+        description: nodecellar_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
@@ -198,6 +200,9 @@ node_templates:
     properties:
       floatingip:
         floating_network_id: { get_input: floating_network_id }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
 
   ###########################################################
   # A port to be attached to the ip (default NodeCellar port)
@@ -211,6 +216,8 @@ node_templates:
     relationships:
       - target: nodecellar_ip
         type: cloudify.openstack.port_connected_to_floating_ip
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
 
   ###########################################################
   # Key pair for connecting to the VMs using SSH.
@@ -230,6 +237,9 @@ node_templates:
 #   - cfy deployments outputs <deployment_id>
 ###########################################################
 
+  scaling_group:
+    type: cloudify.nodes.Root
+
 outputs:
   endpoint:
     description: Web application endpoint
@@ -241,4 +251,4 @@ outputs:
 
 groups:
   nodejs_host_group:
-    members: [nodejs_host, nodecellar_ip, nodecellar_port]
+    members: [nodejs_host, nodecellar_ip, nodecellar_port, scaling_group]
