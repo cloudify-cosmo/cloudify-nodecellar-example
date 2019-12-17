@@ -135,16 +135,16 @@ node_templates:
       # Attaching an ip to the nodejs host
       ###########################################################
 
-      - target: nodecellar_ip
-        type: cloudify.openstack.server_connected_to_floating_ip
+      - target: nodecellar_port
+        type: cloudify.openstack.server_connected_to_port
 
       ###########################################################
       # Attaching the nodecellar security group to
       # the nodecellar host
       ###########################################################
 
-      - target: nodecellar_security_group
-        type: cloudify.openstack.server_connected_to_security_group
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
 
   ###########################################################
   # A security group to enable access to the mongo host
@@ -159,7 +159,7 @@ node_templates:
     type: cloudify.openstack.nodes.SecurityGroup
     properties:
       security_group:
-        name: mongod_security_group
+        description: mongod_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ mongod, port ] }
@@ -180,7 +180,7 @@ node_templates:
     type: cloudify.openstack.nodes.SecurityGroup
     properties:
       security_group:
-        name: nodecellar_security_group
+        description: nodecellar_security_group
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ nodecellar, port ] }
@@ -198,6 +198,31 @@ node_templates:
     properties:
       floatingip:
         floating_network_id: { get_input: floating_network_id }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
+
+  ###########################################################
+  # A port to be attached to the ip (default NodeCellar port)
+  ###########################################################
+
+  nodecellar_port:
+    type: cloudify.openstack.nodes.Port
+    relationships:
+      - type: cloudify.relationships.connected_to
+        target: network
+      - target: nodecellar_ip
+        type: cloudify.openstack.port_connected_to_floating_ip
+      - type: cloudify.relationships.contained_in
+        target: scaling_group
+      - target: nodecellar_security_group
+        type: cloudify.openstack.port_connected_to_security_group
+
+  network:
+    type: cloudify.openstack.nodes.Network
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: network_name }
 
   ###########################################################
   # Key pair for connecting to the VMs using SSH.
@@ -217,9 +242,18 @@ node_templates:
 #   - cfy deployments outputs <deployment_id>
 ###########################################################
 
+  scaling_group:
+    type: cloudify.nodes.Root
+
 outputs:
   endpoint:
     description: Web application endpoint
     value:
       ip_address: { get_attribute: [ nodecellar_ip, floating_ip_address ] }
       port: { get_property: [ nodecellar, port ] }
+
+########## scale groups ################
+
+groups:
+  nodejs_host_group:
+    members: [nodejs_host, nodecellar_ip, nodecellar_port, scaling_group]
