@@ -1,0 +1,97 @@
+version: 2
+
+checkout:
+  post:
+    - >
+      if [ -n "$CI_PULL_REQUEST" ]; then
+        PR_ID=${CI_PULL_REQUEST##*/}
+        git fetch origin +refs/pull/$PR_ID/merge:
+        git checkout -qf FETCH_HEAD
+      fi
+
+jobs:
+
+
+  blueprint-validation:
+    machine:
+      enabled: true
+      python:
+        version: pypy-2.2.1
+    environment:
+      CLOUDIFY_SSL_TRUST_ALL: true
+    steps:
+      - checkout
+      - attach_workspace:
+          at: workspace
+      - run:
+          name: "Pull Submodules"
+          command: |
+            git submodule init
+            git submodule update --remote
+      - run:
+          name: update pip
+          command: pip install -U pip
+      - run:
+          name: install cloudify
+          command: pip install -U cloudify==5.0.0 pytest==4.6.3 pyyaml==3.10
+      - run:
+          name: download manager docker image
+          command: wget http://repository.cloudifysource.org/cloudify/5.0.0/ga-release/cloudify-docker-manager-5.0.0.tar
+      - run:
+          name: load docker image
+          command: docker load -i cloudify-docker-manager-5.0.0.tar
+      - run:
+          name: retain space by dumping the tar
+          command: rm cloudify-docker-manager-5.0.0.tar
+      - run:
+          name: show images
+          command: docker images
+      - run:
+          name: start docker container
+          command: docker run --name cfy_manager -d --restart unless-stopped -v /sys/fs/cgroup:/sys/fs/cgroup:ro --tmpfs /run --tmpfs /run/lock --security-opt seccomp:unconfined --cap-add SYS_ADMIN --network host cloudifyplatform/premium-cloudify-manager-aio
+      - run:
+          name: init CLI profile
+          command: |
+            counter=0
+            until [ $counter -ge 15 ]
+            do
+                cfy profiles use localhost -u admin -p admin -t default_tenant && break
+                counter=$[$counter+1]
+                sleep 2
+            done
+      - run:
+          name: upload license
+          command: |
+            set +x
+            echo ${TEST_LICENSE} | base64 --decode > license.yaml
+            set -x
+            cfy license upload license.yaml
+      - run:
+          name: install plugins bundle
+          command: cfy plugins bundle-upload
+      - run:
+          name: install openstack
+          command: cfy plugins upload http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.9/cloudify_openstack_plugin-3.2.9-py27-none-linux_x86_64-centos-Core.wgn -y http://www.getcloudify.org/spec/openstack-plugin/3.2.9/plugin.yaml || true
+      - run:
+          name: execute test
+          command: |
+            cfy blueprints upload openstack-blueprint.yaml
+            cfy blueprints upload openstack-haproxy-blueprint.yaml
+
+
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - blueprint-validation
+  nightly:
+    triggers:
+    - schedule:
+        cron: "0 0 * * *"
+        filters:
+          branches:
+            only:
+              - master
+    jobs:
+      - blueprint-validation
