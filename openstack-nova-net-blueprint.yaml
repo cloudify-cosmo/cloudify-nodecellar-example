@@ -6,7 +6,7 @@ description: >
   (as opposed to neutron network).
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/7.0.1.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/7.0.1/types.yaml
   - http://www.getcloudify.org/spec/diamond-plugin/1.3.17/plugin.yaml
   - plugin:cloudify-openstack-plugin
   - types/nodecellar.yaml
